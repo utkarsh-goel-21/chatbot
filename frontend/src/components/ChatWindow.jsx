@@ -1,14 +1,194 @@
 import { useState, useRef, useEffect } from "react";
-import { Menu, Send, Bot, User } from "lucide-react";
+import { Menu, Send, Bot, User, Zap, FileText } from "lucide-react";
 
+// ── Detect if a bot message contains tabular data ──
+function tryRenderTable(content) {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      typeof parsed[0] === "object"
+    ) {
+      const headers = Object.keys(parsed[0]);
+      return (
+        <div
+          className="overflow-x-auto mt-2 rounded-xl"
+          style={{ border: "1px solid var(--border)" }}
+        >
+          <table className="result-table">
+            <thead>
+              <tr>
+                {headers.map((h) => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {parsed.map((row, i) => (
+                <tr key={i}>
+                  {headers.map((h) => (
+                    <td key={h}>{String(row[h])}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+// ── Single message bubble ──
+function MessageBubble({ msg }) {
+  const isUser = msg.role === "user";
+  const tableView = !isUser ? tryRenderTable(msg.content) : null;
+
+  return (
+    <div
+      className={`flex items-end gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+    >
+      {/* Avatar */}
+      <div
+        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs mb-1"
+        style={{
+          background: isUser ? "var(--accent)" : "var(--bg-card)",
+          border: "1px solid var(--border)",
+          boxShadow: isUser ? "var(--shadow-accent)" : "none",
+        }}
+      >
+        {isUser ? (
+          <User size={13} className="text-white" />
+        ) : (
+          <Bot size={13} style={{ color: "var(--accent)" }} />
+        )}
+      </div>
+
+      {/* Bubble */}
+      <div
+        className="max-w-[75%] md:max-w-[62%] px-4 py-3 rounded-2xl text-sm leading-relaxed"
+        style={{
+          background: isUser ? "var(--bubble-user-bg)" : "var(--bubble-bot-bg)",
+          color: isUser ? "var(--bubble-user-text)" : "var(--bubble-bot-text)",
+          borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+          border: isUser ? "none" : "1px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          fontFamily: "'Nunito Sans', sans-serif",
+          fontWeight: 500,
+        }}
+      >
+        {tableView || (
+          <p style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {msg.content}
+          </p>
+        )}
+
+        {/* Route tag */}
+        {msg.route && (
+          <div className="flex items-center gap-1.5 mt-2.5">
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                background:
+                  msg.route === "TEXT_TO_SQL"
+                    ? "var(--tag-sql)"
+                    : "var(--tag-rag)",
+                color:
+                  msg.route === "TEXT_TO_SQL"
+                    ? "var(--tag-sql-text)"
+                    : "var(--tag-rag-text)",
+              }}
+            >
+              {msg.route === "TEXT_TO_SQL" ? (
+                <>
+                  <Zap size={9} /> Database
+                </>
+              ) : (
+                <>
+                  <FileText size={9} /> Documents
+                </>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Typing indicator ──
+function TypingIndicator() {
+  return (
+    <div className="flex items-end gap-2.5">
+      <div
+        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <Bot size={13} style={{ color: "var(--accent)" }} />
+      </div>
+      <div
+        className="px-4 py-3.5 rounded-2xl"
+        style={{
+          background: "var(--bubble-bot-bg)",
+          border: "1px solid var(--border)",
+          borderRadius: "18px 18px 18px 4px",
+          boxShadow: "var(--shadow)",
+        }}
+      >
+        <div className="flex gap-1.5 items-center">
+          <span
+            className="dot-bounce w-1.5 h-1.5 rounded-full inline-block"
+            style={{ background: "var(--accent)", animationDelay: "0ms" }}
+          />
+          <span
+            className="dot-bounce w-1.5 h-1.5 rounded-full inline-block"
+            style={{ background: "var(--accent)", animationDelay: "150ms" }}
+          />
+          <span
+            className="dot-bounce w-1.5 h-1.5 rounded-full inline-block"
+            style={{ background: "var(--accent)", animationDelay: "300ms" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main ChatWindow ──
 function ChatWindow({ session, onUpdateSession, onOpenSidebar }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [session?.messages]);
+  }, [session?.messages, loading]);
+
+  // ── Auto expand textarea ──
+  const handleInput = (e) => {
+    const val = e.target.value;
+    if (val.length > 1000) return;
+    setInput(val);
+    e.target.style.height = "auto";
+    e.target.style.height = e.target.scrollHeight + "px";
+  };
+
+  const resetTextarea = () => {
+    setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || !session || loading) return;
@@ -16,8 +196,22 @@ function ChatWindow({ session, onUpdateSession, onOpenSidebar }) {
     const userMessage = { role: "user", content: input };
     const updatedMessages = [...(session.messages || []), userMessage];
     onUpdateSession(session.id, updatedMessages);
-    setInput("");
+    resetTextarea();
     setLoading(true);
+
+    // ── Timeout fallback ──
+    timeoutRef.current = setTimeout(() => {
+      setLoading(false);
+      onUpdateSession(session.id, [
+        ...updatedMessages,
+        {
+          role: "bot",
+          content:
+            "The request timed out. Please check the backend and try again.",
+          route: null,
+        },
+      ]);
+    }, 15000);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/chat", {
@@ -25,21 +219,23 @@ function ChatWindow({ session, onUpdateSession, onOpenSidebar }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: input }),
       });
+      clearTimeout(timeoutRef.current);
       const data = await response.json();
-      const botMessage = {
-        role: "bot",
-        content: data.answer,
-        route: data.route,
-      };
-      onUpdateSession(session.id, [...updatedMessages, botMessage]);
-    } catch (error) {
-      const errorMessage = {
-        role: "bot",
-        content:
-          "Something went wrong. Please make sure the backend is running.",
-        route: null,
-      };
-      onUpdateSession(session.id, [...updatedMessages, errorMessage]);
+      onUpdateSession(session.id, [
+        ...updatedMessages,
+        { role: "bot", content: data.answer, route: data.route },
+      ]);
+    } catch {
+      clearTimeout(timeoutRef.current);
+      onUpdateSession(session.id, [
+        ...updatedMessages,
+        {
+          role: "bot",
+          content:
+            "Something went wrong. Please make sure the backend is running.",
+          route: null,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -52,131 +248,172 @@ function ChatWindow({ session, onUpdateSession, onOpenSidebar }) {
     }
   };
 
+  const charCount = input.length;
+  const charLimit = 1000;
+
   return (
-    <div className="flex flex-col flex-1 h-full overflow-hidden bg-[#0a0a0a]">
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-white/5">
+    <div
+      className="flex flex-col flex-1 h-full overflow-hidden"
+      style={{ background: "var(--bg-primary)" }}
+    >
+      {/* ── Top Bar ── */}
+      <div
+        className="flex items-center gap-3 px-5 py-3.5"
+        style={{
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg-secondary)",
+        }}
+      >
         <button
           onClick={onOpenSidebar}
-          className="md:hidden text-white/40 hover:text-white transition-colors"
+          className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{ color: "var(--text-muted)" }}
         >
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
-        <span className="text-white/50 text-sm">
-          {session ? session.title : "Select or start a new chat"}
-        </span>
+
+        <div className="flex-1 min-w-0">
+          <p
+            className="text-sm font-bold truncate"
+            style={{
+              fontFamily: "'Nunito', sans-serif",
+              color: "var(--text-primary)",
+            }}
+          >
+            {session ? session.title : "BizBot"}
+          </p>
+          {session && (
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {session.messages.filter((m) => m.role === "user").length}{" "}
+              messages
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      {/* ── Messages ── */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-4">
         {!session && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-            <Bot size={40} className="text-white/10" />
-            <p className="text-white/20 text-sm">
-              Ask anything about your business.
-              <br />
-              Sales, revenue, trends and more.
-            </p>
+          <div className="flex flex-col items-center justify-center h-full text-center gap-4">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{
+                background: "var(--accent-soft)",
+                border: "1px solid var(--accent-border)",
+              }}
+            >
+              <BarChart2 size={28} style={{ color: "var(--accent)" }} />
+            </div>
+            <div>
+              <h2
+                className="text-xl font-extrabold mb-1"
+                style={{
+                  fontFamily: "'Nunito', sans-serif",
+                  color: "var(--text-primary)",
+                }}
+              >
+                Welcome to BizBot
+              </h2>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                Start a new chat to ask about your business.
+              </p>
+            </div>
           </div>
         )}
 
         {session?.messages?.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-          >
-            {/* Avatar */}
-            <div
-              className={`
-              shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs
-              ${msg.role === "user" ? "bg-white/10 text-white" : "bg-white/5 text-white/60"}
-            `}
-            >
-              {msg.role === "user" ? <User size={14} /> : <Bot size={14} />}
-            </div>
-
-            {/* Bubble */}
-            <div
-              className={`
-              max-w-[75%] md:max-w-[60%] px-4 py-3 rounded-2xl text-sm leading-relaxed
-              ${
-                msg.role === "user"
-                  ? "bg-white/10 text-white rounded-tr-sm"
-                  : "bg-[#1a1a1a] text-white/80 rounded-tl-sm"
-              }
-            `}
-            >
-              {msg.content}
-
-              {/* Route tag */}
-              {msg.route && (
-                <span
-                  className={`
-                  block mt-2 text-[10px] font-medium tracking-wider uppercase
-                  ${msg.route === "TEXT_TO_SQL" ? "text-blue-400/50" : "text-emerald-400/50"}
-                `}
-                >
-                  {msg.route === "TEXT_TO_SQL" ? "⚡ Database" : "📄 Documents"}
-                </span>
-              )}
-            </div>
-          </div>
+          <MessageBubble key={idx} msg={msg} />
         ))}
 
-        {/* Typing indicator */}
-        {loading && (
-          <div className="flex items-start gap-3">
-            <div className="shrink-0 w-7 h-7 rounded-full bg-white/5 flex items-center justify-center">
-              <Bot size={14} className="text-white/60" />
-            </div>
-            <div className="bg-[#1a1a1a] px-4 py-3 rounded-2xl rounded-tl-sm">
-              <div className="flex gap-1 items-center h-4">
-                <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce [animation-delay:300ms]" />
-              </div>
-            </div>
-          </div>
-        )}
-
+        {loading && <TypingIndicator />}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="px-4 py-4 border-t border-white/5">
+      {/* ── Input Bar ── */}
+      <div
+        className="px-4 md:px-8 py-4"
+        style={{
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-secondary)",
+        }}
+      >
         <div
-          className={`
-          flex items-end gap-3 px-4 py-3 rounded-2xl
-          bg-[#111111] border border-white/10
-          focus-within:border-white/20 transition-colors
-          ${!session ? "opacity-40 pointer-events-none" : ""}
-        `}
+          className="flex items-end gap-3 px-4 py-3 rounded-2xl"
+          style={{
+            background: "var(--bg-input)",
+            border: "1px solid var(--border)",
+          }}
+          onFocus={() => {}}
         >
           <textarea
+            ref={textareaRef}
             rows={1}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInput}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your business..."
-            className="flex-1 bg-transparent text-white text-sm placeholder-white/20
-              resize-none outline-none leading-relaxed max-h-32 overflow-y-auto"
+            disabled={!session || loading}
+            placeholder={
+              session
+                ? "Ask about your business..."
+                : "Start a new chat first..."
+            }
+            className="flex-1 bg-transparent text-sm resize-none outline-none leading-relaxed"
+            style={{
+              color: "var(--text-primary)",
+              fontFamily: "'Nunito Sans', sans-serif",
+              fontWeight: 500,
+              maxHeight: "140px",
+              overflowY: "auto",
+              caretColor: "var(--accent)",
+            }}
           />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || loading}
-            className="shrink-0 w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20
-              disabled:opacity-20 disabled:cursor-not-allowed
-              flex items-center justify-center transition-all duration-200"
-          >
-            <Send size={14} className="text-white" />
-          </button>
+
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            {/* Char counter */}
+            {charCount > 800 && (
+              <span
+                className="text-[10px] font-bold"
+                style={{
+                  color: charCount > 950 ? "#f87171" : "var(--text-muted)",
+                  fontFamily: "'Nunito', sans-serif",
+                }}
+              >
+                {charLimit - charCount}
+              </span>
+            )}
+
+            {/* Send button */}
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || loading || !session}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+              style={{
+                background:
+                  input.trim() && session ? "var(--accent)" : "var(--bg-hover)",
+                boxShadow:
+                  input.trim() && session ? "var(--shadow-accent)" : "none",
+              }}
+            >
+              <Send size={13} className="text-white" />
+            </button>
+          </div>
         </div>
-        <p className="text-white/10 text-xs text-center mt-2">
-          Press Enter to send · Shift+Enter for new line
+
+        <p
+          className="text-center text-[10px] mt-2 font-semibold"
+          style={{
+            color: "var(--text-muted)",
+            fontFamily: "'Nunito', sans-serif",
+          }}
+        >
+          Enter to send · Shift+Enter for new line · {charLimit} char limit
         </p>
       </div>
     </div>
   );
 }
+
+// Fix missing import
+import { BarChart2 } from "lucide-react";
 
 export default ChatWindow;
