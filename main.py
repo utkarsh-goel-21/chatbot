@@ -30,19 +30,22 @@ def chat(request: ChatRequest):
     route = route_query(question)
 
     if route == "TEXT_TO_SQL":
-        sql = generate_sql(question)
-        raw_result = execute_sql(sql)
+        try:
+            sql = generate_sql(question)
+            raw_result = execute_sql(sql)
 
-        system_prompt = """You are a helpful business assistant.
-You will be given a user question and raw database results.
-Convert the raw results into a clean, concise natural language answer.
-Do not mention SQL or databases in your response."""
+            system_prompt = """You are a helpful business assistant.
+    You will be given a user question and raw database results.
+    Convert the raw results into a clean, concise natural language answer.
+    Do not mention SQL or databases in your response."""
 
-        prompt = f"""User Question: {question}
-Raw Database Result: {raw_result}
-Answer:"""
+            prompt = f"""User Question: {question}
+    Raw Database Result: {raw_result}
+    Answer:"""
 
-        answer = call_llm(prompt=prompt, system_prompt=system_prompt)
+            answer = call_llm(prompt=prompt, system_prompt=system_prompt)
+        except Exception as e:
+            answer = "I couldn't process that query. Try asking something more specific like 'How many products do we have?' or 'What transactions happened today?'"
 
     elif route == "RAG":
         answer = generate_rag_answer(question)
