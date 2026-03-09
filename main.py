@@ -28,8 +28,10 @@ class ChatRequest(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    seed_database()
-    embed_documents(get_sample_docs())
+    def seed():
+        seed_database()
+        embed_documents(get_sample_docs())
+    threading.Thread(target=seed, daemon=True).start()
 
 @app.get("/")
 def root():
