@@ -1,4 +1,5 @@
-import { useRef, useCallback, KeyboardEvent } from "react";
+import { useRef, useCallback } from "react";
+import type { KeyboardEvent } from "react";
 import { ArrowUp, Loader2 } from "lucide-react";
 
 interface ChatInputProps {
