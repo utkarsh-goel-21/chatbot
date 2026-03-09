@@ -71,7 +71,7 @@ def keep_alive():
     while True:
         time.sleep(600)
         try:
-            requests.get("https://your-app-name.onrender.com/health")
+            requests.get("https://bizbot-4vlu.onrender.com")
         except:
             pass
 
