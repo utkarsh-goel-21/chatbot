@@ -8,6 +8,7 @@ function App() {
     return stored ? JSON.parse(stored) : [];
   });
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const saveSession = (updatedSessions) => {
     setSessions(updatedSessions);
@@ -24,6 +25,7 @@ function App() {
     const updated = [newSession, ...sessions];
     saveSession(updated);
     setActiveSessionId(newSession.id);
+    setSidebarOpen(false);
   };
 
   const updateSession = (sessionId, messages) => {
@@ -41,13 +43,31 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0a]">
+      {/* Mobile overlay — dark backdrop when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={setActiveSessionId}
+        onSelectSession={(id) => {
+          setActiveSessionId(id);
+          setSidebarOpen(false);
+        }}
         onNewChat={createNewSession}
+        sidebarOpen={sidebarOpen}
+        onCloseSidebar={() => setSidebarOpen(false)}
       />
-      <ChatWindow session={activeSession} onUpdateSession={updateSession} />
+
+      <ChatWindow
+        session={activeSession}
+        onUpdateSession={updateSession}
+        onOpenSidebar={() => setSidebarOpen(true)}
+      />
     </div>
   );
 }
