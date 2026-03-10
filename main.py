@@ -30,7 +30,7 @@ class ChatRequest(BaseModel):
 def startup():
     def seed():
         setup_database()
-        embed_documents(sample_documents())
+        embed_documents(sample_documents)
     threading.Thread(target=seed, daemon=True).start()
 
 @app.get("/")
