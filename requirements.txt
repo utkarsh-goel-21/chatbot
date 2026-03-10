@@ -4,4 +4,3 @@ groq
 sqlalchemy
 python-dotenv
 chromadb
-sentence-transformers
