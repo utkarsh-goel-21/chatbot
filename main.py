@@ -9,7 +9,7 @@ from text_to_sql.sql_generator import generate_sql
 from text_to_sql.sql_executor import execute_sql
 from rag.answer_generator import generate_rag_answer
 from utils.groq_client import call_llm
-from text_to_sql.db_setup import seed_database
+from text_to_sql.db_setup import setup_database
 from rag.embedder import embed_documents
 from rag.sample_docs import get_sample_docs
 
@@ -29,7 +29,7 @@ class ChatRequest(BaseModel):
 @app.on_event("startup")
 def startup():
     def seed():
-        seed_database()
+        setup_database()
         embed_documents(get_sample_docs())
     threading.Thread(target=seed, daemon=True).start()
 
