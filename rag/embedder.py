@@ -18,7 +18,7 @@ def get_collection():
 def embed_documents(documents: list[dict]):
     collection = get_collection()
     for doc in documents:
-        collection.add(
+        collection.upsert(
             documents=[doc["text"]],
             ids=[doc["id"]]
         )
