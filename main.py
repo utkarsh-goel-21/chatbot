@@ -11,7 +11,7 @@ from rag.answer_generator import generate_rag_answer
 from utils.groq_client import call_llm
 from text_to_sql.db_setup import setup_database
 from rag.embedder import embed_documents
-from rag.sample_docs import get_sample_docs
+from rag.sample_docs import sample_documents
 
 app = FastAPI()
 
@@ -30,7 +30,7 @@ class ChatRequest(BaseModel):
 def startup():
     def seed():
         setup_database()
-        embed_documents(get_sample_docs())
+        embed_documents(sample_documents())
     threading.Thread(target=seed, daemon=True).start()
 
 @app.get("/")
