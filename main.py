@@ -25,6 +25,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     question: str
+    user_id: int = 1
 
 @app.on_event("startup")
 def startup():
@@ -48,7 +49,7 @@ def chat(request: ChatRequest):
 
     if route == "TEXT_TO_SQL":
         try:
-            sql = generate_sql(question)
+            sql = generate_sql(question, request.user_id)
             raw_result = execute_sql(sql)
             system_prompt = """You are a helpful business assistant.
 You will be given a user question and raw database results.
