@@ -15,7 +15,8 @@ const ChatArea = () => {
     createSession,
     addMessage,
     setLoading,
-    setSidebarOpen,
+    setSidebarOpen,\
+    currentUser,
   } = useChatStore();
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -48,7 +49,11 @@ const ChatArea = () => {
       setLoading(true);
 
       try {
-        const res = await sendChatMessage(text);
+        const res = await sendChatMessage(
+        text,
+        currentUser.id,
+        messages.map((m) => ({ role: m.role, content: m.content }))
+);
         addMessage(sessionId, {
           id: crypto.randomUUID(),
           role: "ai",

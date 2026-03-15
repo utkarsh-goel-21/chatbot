@@ -35,6 +35,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
     createSession,
     setActiveSession,
     deleteSession,
+    currentUser,
   } = useChatStore();
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -144,10 +145,15 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
       {/* Bottom */}
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center">
-            <DiamondIcon size={14} className="text-qm-green" />
+          <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-green">
+            {currentUser.name[0]}
+            {/* <DiamondIcon size={14} className="text-qm-green" /> */}
           </div>
-          <span className="flex-1 text-sm text-qm-text-sec">BizBot AI</span>
+          <div className="flex-1">
+            <p className="text-sm text-qm-text font-medium">
+              Welcome, {currentUser.name}!
+            </p>
+          </div>
           <div className="w-2 h-2 rounded-full bg-qm-green" />
         </div>
       </div>

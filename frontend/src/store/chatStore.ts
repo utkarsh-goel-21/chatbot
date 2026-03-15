@@ -1,6 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export interface AppUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const USERS: AppUser[] = [
+  { id: 1, name: "Alice", email: "alice@bizbot.com" },
+  { id: 2, name: "Bob", email: "bob@bizbot.com" },
+];
+
+const getRandomUser = (): AppUser => {
+  return USERS[Math.floor(Math.random() * USERS.length)];
+};
+
 export interface Message {
   id: string;
   role: "user" | "ai";
@@ -19,6 +34,7 @@ export interface Session {
 }
 
 interface AppStore {
+  currentUser: AppUser;
   sessions: Session[];
   activeSessionId: string | null;
   isLoading: boolean;
@@ -36,6 +52,7 @@ const genId = () => crypto.randomUUID();
 export const useChatStore = create<AppStore>()(
   persist(
     (set, get) => ({
+      currentUser: getRandomUser(),
       sessions: [],
       activeSessionId: null,
       isLoading: false,
