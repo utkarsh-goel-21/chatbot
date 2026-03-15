@@ -26,6 +26,7 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     question: str
     user_id: int = 1
+    history: list = []
 
 @app.on_event("startup")
 def startup():
@@ -58,12 +59,12 @@ Do not mention SQL or databases in your response."""
             prompt = f"""User Question: {question}
 Raw Database Result: {raw_result}
 Answer:"""
-            answer = call_llm(prompt=prompt, system_prompt=system_prompt)
+            answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
         except Exception:
             answer = "I couldn't process that query. Try asking something more specific like 'How many products do we have?' or 'What transactions happened today?'"
 
     elif route == "RAG":
-        answer = generate_rag_answer(question)
+        answer = generate_rag_answer(question, request.history)
 
     else:
         answer = "I was unable to understand your question. Please try again."
