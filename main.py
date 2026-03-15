@@ -66,6 +66,9 @@ Answer:"""
     elif route == "RAG":
         answer = generate_rag_answer(question, request.history)
 
+    elif route == "BLOCKED":
+        answer = "I'm sorry, but I can't assist with that request."
+
     else:
         answer = "I was unable to understand your question. Please try again."
 
