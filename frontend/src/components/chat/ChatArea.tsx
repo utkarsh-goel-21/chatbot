@@ -74,7 +74,14 @@ const ChatArea = () => {
         setLoading(false);
       }
     },
-    [activeSessionId, addMessage, createSession, setLoading],
+    [
+      activeSessionId,
+      addMessage,
+      createSession,
+      setLoading,
+      currentUser,
+      messages,
+    ],
   );
 
   const handleSuggestion = (text: string) => {

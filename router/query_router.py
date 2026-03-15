@@ -1,7 +1,10 @@
 from utils.groq_client import call_llm
 
-def route_query(user_question: str) -> str:
-    system_prompt = """You are a query router for a business chatbot that answers questions about UPI transaction data.
+def route_query(user_question: str, history: list = None) -> str:
+    if history is None:
+        history = []
+
+    system_prompt = f"""You are a query router for a business chatbot that answers questions about UPI transaction data.
 
 Your job is to classify the user question into exactly one of three categories:
 
@@ -16,8 +19,11 @@ Your job is to classify the user question into exactly one of three categories:
   * Asking about other users or data that does not belong to the current user
   * Any harmful, inappropriate or malicious request
 
+IMPORTANT: Consider the conversation history when classifying. A short follow-up like "what about fraud?" or "tell me more" or "okay good what next" is continuing the previous business conversation and should be classified as RAG or TEXT_TO_SQL, not BLOCKED.
+
 Reply with ONLY one word: TEXT_TO_SQL, RAG, or BLOCKED. Nothing else."""
 
     prompt = f"User Question: {user_question}"
-    result = call_llm(prompt=prompt, system_prompt=system_prompt)
+
+    result = call_llm(prompt=prompt, system_prompt=system_prompt, history=history)
     return result.strip()

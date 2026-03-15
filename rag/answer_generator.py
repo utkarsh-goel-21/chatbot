@@ -1,10 +1,11 @@
 from utils.groq_client import call_llm
 from rag.retriever import retrieve_relevant_docs
 
-def generate_rag_answer(user_question: str, history: list = None) -> str:
+def generate_rag_answer(user_question: str, user_id: int = 1, history: list = None) -> str:
     if history is None:
         history = []
-    relevant_docs = retrieve_relevant_docs(user_question)
+
+    relevant_docs = retrieve_relevant_docs(user_question, user_id)
 
     system_prompt = """You are a helpful business analyst assistant.
 You will be given some business context documents and a user question.

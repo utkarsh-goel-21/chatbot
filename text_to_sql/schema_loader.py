@@ -1,22 +1,51 @@
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_schema_cache = None
+
 def get_engine():
     return create_engine(os.getenv("DATABASE_URL"))
 
 def get_schema() -> str:
+    global _schema_cache
+    if _schema_cache is not None:
+        return _schema_cache
+
     engine = get_engine()
     inspector = inspect(engine)
     schema_parts = []
 
-    for table_name in inspector.get_table_names():
-        columns = inspector.get_columns(table_name)
-        col_definitions = ", ".join(
-            f"{col['name']} ({str(col['type'])})" for col in columns
-        )
-        schema_parts.append(f"Table: {table_name} | Columns: {col_definitions}")
+    excluded_tables = {"rag_documents"}
+    skip_distinct = {"id", "amount_inr", "timestamp", "transaction_id", "hour_of_day"}
 
-    return "\n".join(schema_parts)
+    with engine.connect() as conn:
+        for table_name in inspector.get_table_names():
+            if table_name in excluded_tables:
+                continue
+            columns = inspector.get_columns(table_name)
+            col_definitions = []
+            for col in columns:
+                col_name = col['name']
+                col_type = str(col['type'])
+                if col_name in skip_distinct:
+                    col_definitions.append(f"{col_name} ({col_type})")
+                else:
+                    try:
+                        rows = conn.execute(text(
+                            f"SELECT DISTINCT {col_name} FROM {table_name} LIMIT 20"
+                        )).fetchall()
+                        values = [str(r[0]) for r in rows]
+                        col_definitions.append(
+                            f"{col_name} ({col_type}, possible values: {', '.join(values)})"
+                        )
+                    except:
+                        col_definitions.append(f"{col_name} ({col_type})")
+            schema_parts.append(
+                f"Table: {table_name} | Columns: {', '.join(col_definitions)}"
+            )
+
+    _schema_cache = "\n".join(schema_parts)
+    return _schema_cache

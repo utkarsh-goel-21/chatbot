@@ -7,11 +7,14 @@ import requests
 from router.query_router import route_query
 from text_to_sql.sql_generator import generate_sql
 from text_to_sql.sql_executor import execute_sql
+from text_to_sql.db_setup import get_engine
+from sqlalchemy import text
 from rag.answer_generator import generate_rag_answer
 from utils.groq_client import call_llm
 from text_to_sql.db_setup import setup_database
+from rag.generate_insights import generate_insight_documents
 from rag.embedder import embed_documents
-from rag.sample_docs import sample_documents
+from text_to_sql.schema_loader import get_schema
 
 app = FastAPI()
 
@@ -32,7 +35,24 @@ class ChatRequest(BaseModel):
 def startup():
     def seed():
         setup_database()
-        embed_documents(sample_documents)
+        engine = get_engine()
+        for uid in [1, 2]:
+            # Check if insights already exist for this user
+            with engine.connect() as conn:
+                count = conn.execute(text(
+                    "SELECT COUNT(*) FROM rag_documents WHERE user_id = :uid"
+                ), {"uid": uid}).scalar()
+            if count > 0:
+                print(f"Insights already exist for user {uid}. Skipping generation.")
+                continue
+
+            print(f"Generating insights for user {uid}...")
+            docs = generate_insight_documents(uid)
+            embed_documents(docs)
+        print("Warming up schema cache...")
+        get_schema()
+        print("Schema cache ready.")
+            
     threading.Thread(target=seed, daemon=True).start()
 
 @app.get("/")
@@ -46,7 +66,7 @@ def health():
 @app.post("/chat")
 def chat(request: ChatRequest):
     question = request.question
-    route = route_query(question)
+    route = route_query(question, request.history)
 
     if route == "TEXT_TO_SQL":
         try:
@@ -60,11 +80,12 @@ Do not mention SQL or databases in your response."""
 Raw Database Result: {raw_result}
 Answer:"""
             answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
-        except Exception:
+        except Exception as e:
+            print(f"TEXT_TO_SQL ERROR: {e}")
             answer = "I couldn't process that query. Try asking something more specific like 'How many products do we have?' or 'What transactions happened today?'"
 
     elif route == "RAG":
-        answer = generate_rag_answer(question, request.history)
+        answer = generate_rag_answer(question, request.user_id, request.history)
 
     elif route == "BLOCKED":
         answer = "I'm sorry, but I can't assist with that request."
