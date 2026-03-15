@@ -88,6 +88,9 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
               <span className="flex-1 text-sm truncate max-w-[160px]">
                 {s.title.length > 28 ? s.title.slice(0, 28) + "…" : s.title}
               </span>
+              <span className="text-qm-text-muted text-[11px] ml-auto mr-1 group-hover:hidden flex-shrink-0">
+                {shortTime(s.updatedAt)}
+              </span>
               {confirmId === s.id ? (
                 <div
                   className="flex items-center gap-1 text-[11px]"
@@ -112,9 +115,9 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
                 </div>
               ) : (
                 <>
-                  <span className="text-qm-text-muted text-[11px] mr-1 group-hover:hidden">
+                  {/* <span className="text-qm-text-muted text-[11px] mr-1 group-hover:hidden">
                     {shortTime(s.updatedAt)}
-                  </span>
+                  </span> */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

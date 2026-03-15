@@ -18,8 +18,8 @@ const MessageBubble = ({ message }: { message: Message }) => {
 
   if (message.role === "user") {
     return (
-      <div className="flex justify-end animate-msg-in">
-        <div className="max-w-[70%] md:max-w-[70%] max-sm:max-w-[85%]">
+      <div className="flex justify-end animate-msg-in max-sm:pr-3">
+        <div className="max-w-[70%] md:max-w-[70%] max-sm:max-w-[85%] max-sm:mr-2">
           <div
             className="rounded-[18px_18px_4px_18px] px-4 py-3 text-[15px] leading-[1.6] text-qm-text"
             style={{
@@ -39,11 +39,11 @@ const MessageBubble = ({ message }: { message: Message }) => {
 
   const isError = message.isError;
   return (
-    <div className="flex items-start gap-3 animate-msg-in">
-      <div className="mt-1 flex-shrink-0">
+    <div className="flex items-start gap-3 animate-msg-in  ">
+      <div className="mt-1 flex-shrink-0 max-sm:ml-1">
         <DiamondIcon size={16} className="text-qm-accent" />
       </div>
-      <div className="max-w-[85%] md:max-w-[85%] max-sm:max-w-[95%]">
+      <div className="max-w-[85%] md:max-w-[85%] max-sm:max-w-[85%] max-sm:ml-1">
         <div
           className="rounded-[18px_18px_18px_4px] px-[18px] py-4"
           style={

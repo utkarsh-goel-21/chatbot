@@ -97,11 +97,11 @@ const ChatArea = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden text-qm-text-sec hover:text-qm-text transition-colors"
+            className="md:hidden text-qm-text-sec hover:text-qm-text transition-colors max-sm:ml-1"
           >
             <Menu size={20} />
           </button>
-          <h2 className="font-semibold text-qm-text text-sm truncate max-w-[300px]">
+          <h2 className="font-semibold text-qm-text text-sm truncate max-w-[300px] max-sm:max-w-[160px]">
             {title}
           </h2>
         </div>
@@ -114,7 +114,7 @@ const ChatArea = () => {
       {messages.length === 0 && !isLoading ? (
         <WelcomeScreen onSuggestionClick={handleSuggestion} />
       ) : (
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-6 max-sm:px-4 py-6">
+        <div className="flex-1 overflow-y-auto scrollbar-thin px-6 max-sm:px-5 py-6">
           <div className="max-w-[760px] mx-auto space-y-6">
             {messages.map((m) => (
               <MessageBubble key={m.id} message={m} />
