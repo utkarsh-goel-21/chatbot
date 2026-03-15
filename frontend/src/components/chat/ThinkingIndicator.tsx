@@ -3,7 +3,7 @@ import DiamondIcon from "./DiamondIcon";
 const ThinkingIndicator = () => (
   <div className="flex items-start gap-3 animate-msg-in">
     <div className="mt-1 flex-shrink-0">
-      <DiamondIcon size={12} className="text-qm-green" />
+      <DiamondIcon size={16} className="text-qm-accent" />
     </div>
     <div className="bg-qm-elevated border border-border rounded-[18px_18px_18px_4px] p-4 max-w-[85%]">
       <div className="h-6 w-16 bg-qm-surface rounded-full mb-2.5 animate-pulse" />

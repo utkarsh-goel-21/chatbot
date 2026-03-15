@@ -1,72 +1,96 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-border: hsl(230 28% 16%);
-  --color-background: hsl(230 33% 5%);
-  --color-foreground: hsl(0 0% 100%);
-  --color-qm-base: hsl(230 33% 5%);
-  --color-qm-surface: hsl(228 25% 10%);
-  --color-qm-elevated: hsl(230 25% 14%);
-  --color-qm-green: hsl(157 100% 50%);
-  --color-qm-purple: hsl(263 100% 64%);
-  --color-qm-blue: hsl(217 91% 60%);
-  --color-qm-text: hsl(0 0% 100%);
-  --color-qm-text-sec: hsl(229 12% 60%);
-  --color-qm-text-muted: hsl(231 12% 33%);
+  --color-border: var(--border-color);
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-qm-base: var(--bg-base);
+  --color-qm-surface: var(--bg-surface);
+  --color-qm-elevated: var(--bg-elevated);
+  --color-qm-accent: var(--accent);
+  --color-qm-green: var(--accent);
+  --color-qm-text: var(--text-primary);
+  --color-qm-text-sec: var(--text-secondary);
+  --color-qm-text-muted: var(--text-muted);
   --radius: 1rem;
 }
 
-@layer base {
-  :root {
-    --bg-base: 230 33% 5%;
-    --bg-surface: 228 25% 10%;
-    --bg-elevated: 230 25% 14%;
-    --bg-message-ai: 228 25% 10%;
-    --bg-message-user: 153 30% 17%;
-    --border: 230 28% 16%;
-    --accent-green: 157 100% 50%;
-    --accent-purple: 263 100% 64%;
-    --accent-blue: 217 91% 60%;
-    --accent-amber: 43 100% 50%;
-    --text-primary: 0 0% 100%;
-    --text-secondary: 229 12% 60%;
-    --text-muted: 231 12% 33%;
-    --background: var(--bg-base);
-    --foreground: var(--text-primary);
-    --card: var(--bg-surface);
-    --card-foreground: var(--text-primary);
-    --popover: var(--bg-surface);
-    --popover-foreground: var(--text-primary);
-    --primary: var(--accent-green);
-    --primary-foreground: 0 0% 0%;
-    --secondary: var(--bg-elevated);
-    --secondary-foreground: var(--text-primary);
-    --muted: var(--bg-elevated);
-    --muted-foreground: var(--text-secondary);
-    --accent: var(--bg-elevated);
-    --accent-foreground: var(--text-primary);
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --input: 230 28% 16%;
-    --ring: var(--accent-green);
-  }
+/* Dark mode — Warm Ember */
+:root,
+.dark {
+  --bg-base: #222220; /* main canvas — the LIGHTER surface */
+  --bg-surface: #1c1b19; /* sidebar — the DARKER anchor */
+  --bg-elevated: #2c2b28; /* input, cards, active items */
+  --border-color: #3a3836;
 
+  --accent: #f09438;
+  --accent-hover: #f8aa52;
+
+  --bg-message-ai: #222220;
+  --bg-message-user: #2b1c08;
+  --user-bubble-bg: #2b1c08;
+  --user-bubble-border: #7a4510;
+
+  --error-bg: #201414;
+  --error-border: #6b2a2a;
+  --error-text: #ffb49a;
+
+  --sql-tag-bg: #201a00;
+  --sql-tag-text: #f5ca70;
+  --rag-tag-bg: #200e06;
+  --rag-tag-text: #ffb49a;
+
+  --text-primary: #eee8da;
+  --text-secondary: #c4aa88;
+  --text-muted: #8a7460;
+}
+
+/* Light mode — Warm Parchment */
+.light {
+  --bg-base: #fbf7f2;
+  --bg-surface: #f3ede3;
+  --bg-elevated: #ffffff;
+  --border-color: #ddd3c4;
+  --accent: #b86830;
+  --accent-hover: #a05828;
+  --user-bubble-bg: #fdecd8;
+  --user-bubble-border: #e8c8a0;
+  --sql-tag-bg: #fef3e2;
+  --sql-tag-text: #92530e;
+  --rag-tag-bg: #fef0eb;
+  --rag-tag-text: #8c3a1c;
+  --text-primary: #1e1610;
+  --text-secondary: #6b4f38;
+  --text-muted: #a89078;
+  --bg-message-ai: #f3ede3;
+  --bg-message-user: #fdecd8;
+  --error-bg: #fff0f0;
+  --error-border: #ffcccc;
+  --error-text: #8c3a1c;
+}
+
+@layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--border-color);
   }
 
   body {
-    background: hsl(var(--bg-base));
-    color: hsl(var(--text-primary));
-    font-family: "Inter", sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: "Instrument Sans", sans-serif;
+  }
+
+  code,
+  pre,
+  .mono {
+    font-family: "JetBrains Mono", monospace;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--bg-elevated)) transparent;
+    scrollbar-color: var(--bg-elevated) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 4px;
@@ -75,7 +99,7 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--bg-elevated));
+    background: var(--bg-elevated);
     border-radius: 9999px;
   }
 }
@@ -112,4 +136,10 @@
 }
 .animate-msg-in {
   animation: msg-in 200ms ease-out both;
+}
+
+/* Light mode input fix */
+.light .chat-input-box {
+  background: var(--bg-elevated);
+  border-color: var(--border-color);
 }

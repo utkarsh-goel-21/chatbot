@@ -1,10 +1,15 @@
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useChatStore } from "@/store/chatStore";
 import Sidebar from "@/components/chat/Sidebar";
 import ChatArea from "@/components/chat/ChatArea";
 
 const Index = () => {
-  const { sidebarOpen, setSidebarOpen } = useChatStore();
+  const { sidebarOpen, setSidebarOpen, theme } = useChatStore();
+
+  useEffect(() => {
+    document.documentElement.className = theme;
+  }, [theme]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">

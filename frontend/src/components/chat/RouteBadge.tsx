@@ -10,9 +10,9 @@ const RouteBadge = ({ route }: RouteBadgeProps) => {
     <span
       className="inline-flex items-center gap-[5px] rounded-full px-[10px] text-[11px] font-semibold leading-6"
       style={{
-        background: isSql ? "#3B82F620" : "#9945FF20",
-        color: isSql ? "#3B82F6" : "#9945FF",
-        border: `1px solid ${isSql ? "#3B82F640" : "#9945FF40"}`,
+        background: isSql ? "var(--sql-tag-bg)" : "var(--rag-tag-bg)",
+        color: isSql ? "var(--sql-tag-text)" : "var(--rag-tag-text)",
+        border: `1px solid ${isSql ? "var(--sql-tag-text)" : "var(--rag-tag-text)"}`,
       }}
     >
       {isSql ? <Database size={12} /> : <BookOpen size={12} />}

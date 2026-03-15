@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { Sun, Moon } from "lucide-react";
 import { Plus, Trash2 } from "lucide-react";
 import {
-  formatDistanceToNow,
   isToday,
   isYesterday,
   subDays,
   isAfter,
+  differenceInMinutes,
+  differenceInHours,
+  differenceInDays,
 } from "date-fns";
 import { useChatStore, type Session } from "@/store/chatStore";
 import DiamondIcon from "./DiamondIcon";
@@ -28,6 +31,16 @@ function groupSessions(sessions: Session[]) {
   return { today, yesterday, week, older };
 }
 
+function shortTime(date: number): string {
+  const now = new Date();
+  const d = new Date(date);
+  const mins = differenceInMinutes(now, d);
+  if (mins < 60) return `${mins}m`;
+  const hrs = differenceInHours(now, d);
+  if (hrs < 24) return `${hrs}h`;
+  return `${differenceInDays(now, d)}d`;
+}
+
 const Sidebar = ({ onClose }: { onClose?: () => void }) => {
   const {
     sessions,
@@ -36,6 +49,8 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
     setActiveSession,
     deleteSession,
     currentUser,
+    theme,
+    toggleTheme,
   } = useChatStore();
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -98,7 +113,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
               ) : (
                 <>
                   <span className="text-qm-text-muted text-[11px] mr-1 group-hover:hidden">
-                    {formatDistanceToNow(s.updatedAt, { addSuffix: false })}
+                    {shortTime(s.updatedAt)}
                   </span>
                   <button
                     onClick={(e) => {
@@ -123,7 +138,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
       {/* Top */}
       <div className="p-4 pb-3">
         <div className="flex items-center gap-2 mb-4">
-          <DiamondIcon size={20} className="text-qm-green" />
+          <DiamondIcon size={20} className="text-qm-accent" />
           <span className="text-lg font-bold text-qm-text">BizBot</span>
         </div>
         <button
@@ -147,14 +162,18 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-green">
             {currentUser.name[0]}
-            {/* <DiamondIcon size={14} className="text-qm-green" /> */}
           </div>
           <div className="flex-1">
             <p className="text-sm text-qm-text font-medium">
               Welcome, {currentUser.name}!
             </p>
           </div>
-          <div className="w-2 h-2 rounded-full bg-qm-green" />
+          <button
+            onClick={toggleTheme}
+            className="text-qm-text-muted hover:text-qm-text transition-colors"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
         </div>
       </div>
     </div>

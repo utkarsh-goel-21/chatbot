@@ -23,8 +23,8 @@ const MessageBubble = ({ message }: { message: Message }) => {
           <div
             className="rounded-[18px_18px_4px_18px] px-4 py-3 text-[15px] leading-[1.6] text-qm-text"
             style={{
-              background: "hsl(var(--bg-message-user))",
-              border: "1px solid rgba(0,255,163,0.15)",
+              background: "var(--bg-message-user)",
+              border: "1px solid var(--user-bubble-border)",
             }}
           >
             {message.content}
@@ -41,7 +41,7 @@ const MessageBubble = ({ message }: { message: Message }) => {
   return (
     <div className="flex items-start gap-3 animate-msg-in">
       <div className="mt-1 flex-shrink-0">
-        <DiamondIcon size={12} className="text-qm-green" />
+        <DiamondIcon size={16} className="text-qm-accent" />
       </div>
       <div className="max-w-[85%] md:max-w-[85%] max-sm:max-w-[95%]">
         <div
@@ -49,13 +49,13 @@ const MessageBubble = ({ message }: { message: Message }) => {
           style={
             isError
               ? {
-                  background: "rgba(255,70,70,0.08)",
-                  border: "1px solid rgba(255,70,70,0.25)",
-                  color: "#FF8080",
+                  background: "var(--error-bg)",
+                  border: "1px solid var(--error-border)",
+                  color: "var(--error-text)",
                 }
               : {
-                  background: "hsl(var(--bg-message-ai))",
-                  border: "1px solid hsl(var(--border))",
+                  background: "var(--bg-message-ai)",
+                  border: "1px solid var(--border-color)",
                 }
           }
         >

@@ -39,6 +39,8 @@ interface AppStore {
   activeSessionId: string | null;
   isLoading: boolean;
   sidebarOpen: boolean;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
   createSession: () => string;
   setActiveSession: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -57,6 +59,12 @@ export const useChatStore = create<AppStore>()(
       activeSessionId: null,
       isLoading: false,
       sidebarOpen: false,
+      theme: "dark",
+      toggleTheme: () => {
+        const newTheme = get().theme === "dark" ? "light" : "dark";
+        document.documentElement.className = newTheme;
+        set({ theme: newTheme });
+      },
       createSession: () => {
         const id = genId();
         const session: Session = {
@@ -118,6 +126,7 @@ export const useChatStore = create<AppStore>()(
       partialize: (state) => ({
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
+        theme: state.theme,
       }),
     },
   ),
