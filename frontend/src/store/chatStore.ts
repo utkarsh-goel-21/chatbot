@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
-
 export interface AppUser {
   id: number;
   name: string;
