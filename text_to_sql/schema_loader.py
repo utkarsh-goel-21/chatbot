@@ -17,23 +17,6 @@ def get_schema(user_id: int = None) -> str:
     global _schema_cache
     if _schema_cache is not None:
         return _schema_cache
-    if user_id:
-        with engine.connect() as conn:
-            uploaded = conn.execute(text(
-                "SELECT table_name FROM uploaded_tables WHERE user_id = :uid"
-            ), {"uid": user_id}).fetchall()
-
-            for row in uploaded:
-                tname = row[0]
-                try:
-                    ucols = inspector.get_columns(tname)
-                    col_defs = []
-                    for col in ucols:
-                        col_defs.append(f"{col['name']} ({str(col['type'])})")
-                    schema_parts.append(f"Table: {tname} | Columns: {', '.join(col_defs)}")
-                except:
-                    pass
-
 
     engine = get_engine()
     inspector = inspect(engine)
@@ -67,6 +50,24 @@ def get_schema(user_id: int = None) -> str:
             schema_parts.append(
                 f"Table: {table_name} | Columns: {', '.join(col_definitions)}"
             )
+
+        # Include uploaded tables for this user
+        if user_id:
+            try:
+                uploaded = conn.execute(text(
+                    "SELECT table_name FROM uploaded_tables WHERE user_id = :uid"
+                ), {"uid": user_id}).fetchall()
+
+                for row in uploaded:
+                    tname = row[0]
+                    try:
+                        ucols = inspector.get_columns(tname)
+                        col_defs = [f"{col['name']} ({str(col['type'])})" for col in ucols]
+                        schema_parts.append(f"Table: {tname} | Columns: {', '.join(col_defs)}")
+                    except:
+                        pass
+            except:
+                pass
 
     _schema_cache = "\n".join(schema_parts)
     return _schema_cache
