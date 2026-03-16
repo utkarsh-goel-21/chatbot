@@ -22,6 +22,7 @@ const ChatInput = ({
   const csvInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [showUploadMenu, setShowUploadMenu] = useState(false);
+  const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   const handleSend = () => {
     const val = ref.current?.value.trim();
@@ -65,7 +66,8 @@ const ChatInput = ({
             <div className="absolute bottom-full mb-2 left-0 bg-qm-elevated border border-border rounded-xl shadow-lg overflow-hidden z-10">
               <button
                 onClick={() => {
-                  csvInputRef.current?.click();
+                  setShowUploadMenu(false);
+                  setShowDemoPopup(true);
                 }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-qm-text hover:bg-qm-surface transition-colors w-full text-left"
               >
@@ -75,12 +77,32 @@ const ChatInput = ({
               <div className="border-t border-border" />
               <button
                 onClick={() => {
-                  docInputRef.current?.click();
+                  setShowUploadMenu(false);
+                  setShowDemoPopup(true);
                 }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-qm-text hover:bg-qm-surface transition-colors w-full text-left"
               >
                 <span>📄</span>
                 <span>Add PDF / TXT file</span>
+              </button>
+            </div>
+          )}
+
+          {/* Demo account popup */}
+          {showDemoPopup && (
+            <div className="absolute bottom-full mb-2 left-0 bg-qm-elevated border border-border rounded-xl shadow-lg p-4 z-10 max-w-[280px]">
+              <p className="text-sm text-qm-text font-medium mb-1">
+                Demo Account
+              </p>
+              <p className="text-[13px] text-qm-text-sec leading-relaxed">
+                File uploads are not available for demo accounts. Create an
+                account to upload your own data.
+              </p>
+              <button
+                onClick={() => setShowDemoPopup(false)}
+                className="mt-3 w-full text-center text-[13px] text-qm-accent font-medium hover:opacity-80 transition-opacity"
+              >
+                Got it
               </button>
             </div>
           )}
@@ -104,7 +126,10 @@ const ChatInput = ({
 
             {/* Paperclip button */}
             <button
-              onClick={() => setShowUploadMenu((v) => !v)}
+              onClick={() => {
+                setShowDemoPopup(false);
+                setShowUploadMenu((v) => !v);
+              }}
               disabled={isLoading || isUploading}
               className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-qm-text-muted hover:text-qm-text transition-colors disabled:opacity-50"
             >
@@ -122,7 +147,10 @@ const ChatInput = ({
               className="flex-1 bg-transparent border-none outline-none text-qm-text text-[15px] leading-[1.6] placeholder:text-qm-text-muted resize-none min-h-[24px] max-h-[200px] scrollbar-thin"
               onKeyDown={handleKeyDown}
               onInput={handleInput}
-              onClick={() => setShowUploadMenu(false)}
+              onClick={() => {
+                setShowUploadMenu(false);
+                setShowDemoPopup(false);
+              }}
             />
 
             <button
