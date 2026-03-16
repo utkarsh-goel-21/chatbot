@@ -6,3 +6,4 @@ python-dotenv
 chromadb
 requests
 psycopg2-binary
+pypdf2

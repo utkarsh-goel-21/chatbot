@@ -31,3 +31,19 @@ export async function sendChatMessage(
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
   return res.json();
 }
+
+export async function uploadFile(
+  file: File,
+  userId: number,
+): Promise<{ status: string; message: string; type?: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("user_id", userId.toString());
+
+  const res = await fetch(`${BASE_URL}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+  return res.json();
+}

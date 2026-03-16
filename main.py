@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import threading
@@ -16,7 +17,32 @@ from rag.generate_insights import generate_insight_documents
 from rag.embedder import embed_documents
 from text_to_sql.schema_loader import get_schema
 
-app = FastAPI()
+def seed():
+    setup_database()
+    engine = get_engine()
+    for uid in [1, 2]:
+        with engine.connect() as conn:
+            count = conn.execute(text(
+                "SELECT COUNT(*) FROM rag_documents WHERE user_id = :uid"
+            ), {"uid": uid}).scalar()
+        if count > 0:
+            print(f"Insights already exist for user {uid}. Skipping generation.")
+            continue
+        print(f"Generating insights for user {uid}...")
+        docs = generate_insight_documents(uid)
+        embed_documents(docs)
+    print("Warming up schema cache...")
+    get_schema()
+    print("Schema cache ready.")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Runs on startup
+    threading.Thread(target=seed, daemon=True).start()
+    yield
+    # Runs on shutdown (nothing to clean up for now)
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,30 +57,6 @@ class ChatRequest(BaseModel):
     user_id: int = 1
     history: list = []
 
-@app.on_event("startup")
-def startup():
-    def seed():
-        setup_database()
-        engine = get_engine()
-        for uid in [1, 2]:
-            # Check if insights already exist for this user
-            with engine.connect() as conn:
-                count = conn.execute(text(
-                    "SELECT COUNT(*) FROM rag_documents WHERE user_id = :uid"
-                ), {"uid": uid}).scalar()
-            if count > 0:
-                print(f"Insights already exist for user {uid}. Skipping generation.")
-                continue
-
-            print(f"Generating insights for user {uid}...")
-            docs = generate_insight_documents(uid)
-            embed_documents(docs)
-        print("Warming up schema cache...")
-        get_schema()
-        print("Schema cache ready.")
-            
-    threading.Thread(target=seed, daemon=True).start()
-
 @app.get("/")
 def root():
     return {"status": "BizBot backend is running"}
@@ -62,6 +64,48 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    user_id: int = Form(...)
+):
+    from utils.file_processor import process_csv, process_pdf, process_txt
+    from text_to_sql.schema_loader import reset_schema_cache
+
+    contents = await file.read()
+    filename = file.filename.lower()
+
+    try:
+        if filename.endswith(".csv"):
+            table_name = process_csv(contents, file.filename, user_id)
+            reset_schema_cache()
+            return {
+                "status": "success",
+                "type": "csv",
+                "message": f"CSV uploaded successfully. You can now ask questions about {file.filename}.",
+                "table_name": table_name
+            }
+        elif filename.endswith(".pdf"):
+            chunks = process_pdf(contents, file.filename, user_id)
+            return {
+                "status": "success",
+                "type": "pdf",
+                "message": f"PDF uploaded successfully ({chunks} chunks indexed). You can now ask questions about {file.filename}.",
+            }
+        elif filename.endswith(".txt"):
+            chunks = process_txt(contents, file.filename, user_id)
+            return {
+                "status": "success",
+                "type": "txt",
+                "message": f"Text file uploaded successfully ({chunks} chunks indexed). You can now ask questions about {file.filename}.",
+            }
+        else:
+            return {"status": "error", "message": "Unsupported file type. Please upload CSV, PDF, or TXT files."}
+
+    except Exception as e:
+        print(f"Upload error: {e}")
+        return {"status": "error", "message": f"Failed to process file: {str(e)}"}
 
 @app.post("/chat")
 def chat(request: ChatRequest):
@@ -71,15 +115,19 @@ def chat(request: ChatRequest):
     if route == "TEXT_TO_SQL":
         try:
             sql = generate_sql(question, request.user_id)
-            raw_result = execute_sql(sql)
-            system_prompt = """You are a helpful business assistant.
+            if sql.strip() == "CANNOT_ANSWER":
+                answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
+            else:
+                raw_result = execute_sql(sql)
+                system_prompt = """You are a helpful business assistant.
 You will be given a user question and raw database results.
 Convert the raw results into a clean, concise natural language answer.
-Do not mention SQL or databases in your response."""
-            prompt = f"""User Question: {question}
+Do not mention SQL or databases in your response.
+IMPORTANT: Only answer based on the data provided. Do not make assumptions or invent information not present in the results."""
+                prompt = f"""User Question: {question}
 Raw Database Result: {raw_result}
 Answer:"""
-            answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
+                answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
         except Exception as e:
             print(f"TEXT_TO_SQL ERROR: {e}")
             answer = "I couldn't process that query. Try asking something more specific like 'How many products do we have?' or 'What transactions happened today?'"

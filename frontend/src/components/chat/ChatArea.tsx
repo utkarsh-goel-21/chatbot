@@ -1,7 +1,7 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { Menu } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
-import { sendChatMessage } from "@/lib/api";
+import { sendChatMessage, uploadFile } from "@/lib/api";
 import MessageBubble from "./MessageBubble";
 import ThinkingIndicator from "./ThinkingIndicator";
 import WelcomeScreen from "./WelcomeScreen";
@@ -20,9 +20,13 @@ const ChatArea = () => {
   } = useChatStore();
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
-  const messages = activeSession?.messages || [];
+  const messages = useMemo(
+    () => activeSession?.messages || [],
+    [activeSession],
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,6 +88,33 @@ const ChatArea = () => {
     ],
   );
 
+  const handleUpload = async (file: File) => {
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      sessionId = createSession();
+    }
+    setIsUploading(true);
+    try {
+      const res = await uploadFile(file, currentUser.id);
+      addMessage(sessionId, {
+        id: crypto.randomUUID(),
+        role: "ai",
+        content: res.message,
+        timestamp: Date.now(),
+      });
+    } catch {
+      addMessage(sessionId, {
+        id: crypto.randomUUID(),
+        role: "ai",
+        content: "Sorry, file upload failed. Please try again.",
+        timestamp: Date.now(),
+        isError: true,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSuggestion = (text: string) => {
     handleSend(text);
   };
@@ -130,6 +161,8 @@ const ChatArea = () => {
         onSend={handleSend}
         isLoading={isLoading}
         inputRef={inputRef}
+        onUpload={handleUpload}
+        isUploading={isUploading}
       />
     </div>
   );
