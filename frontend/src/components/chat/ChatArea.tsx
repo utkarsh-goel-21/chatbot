@@ -6,6 +6,7 @@ import MessageBubble from "./MessageBubble";
 import ThinkingIndicator from "./ThinkingIndicator";
 import WelcomeScreen from "./WelcomeScreen";
 import ChatInput from "./ChatInput";
+import AuthModal from "@/components/auth/AuthModal";
 
 const ChatArea = () => {
   const {
@@ -17,6 +18,7 @@ const ChatArea = () => {
     setLoading,
     setSidebarOpen,
     currentUser,
+    authUser,
   } = useChatStore();
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -27,6 +29,8 @@ const ChatArea = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [signupMode, setSignupMode] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,9 +140,33 @@ const ChatArea = () => {
             {title}
           </h2>
         </div>
-        <span className="text-qm-text-muted text-[13px]">
-          {messages.length} messages
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-qm-text-muted text-[13px]">
+            {messages.length} messages
+          </span>
+          {!authUser && (
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setSignupMode(false);
+                  setShowAuthModal(true);
+                }}
+                className="text-sm text-qm-text border border-border rounded-lg px-3 py-1.5 hover:bg-qm-elevated transition-colors"
+              >
+                Log in
+              </button>
+              <button
+                onClick={() => {
+                  setSignupMode(true);
+                  setShowAuthModal(true);
+                }}
+                className="text-sm text-qm-base bg-qm-accent rounded-lg px-3 py-1.5 hover:opacity-90 transition-opacity font-medium"
+              >
+                Sign up
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -164,6 +192,17 @@ const ChatArea = () => {
         onUpload={handleUpload}
         isUploading={isUploading}
       />
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          defaultMode={signupMode ? "signup" : "login"}
+          onClose={() => {
+            setShowAuthModal(false);
+            setSignupMode(false);
+          }}
+        />
+      )}
     </div>
   );
 };

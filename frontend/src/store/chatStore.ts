@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export interface AppUser {
   id: number;
@@ -8,8 +10,8 @@ export interface AppUser {
 }
 
 const USERS: AppUser[] = [
-  { id: 1, name: "Alice", email: "alice@bizbot.com" },
-  { id: 2, name: "Bob", email: "bob@bizbot.com" },
+  { id: 1, name: "Guest A", email: "alice@bizbot.com" },
+  { id: 2, name: "Guest B", email: "bob@bizbot.com" },
 ];
 
 const getRandomUser = (): AppUser => {
@@ -39,7 +41,9 @@ interface AppStore {
   activeSessionId: string | null;
   isLoading: boolean;
   sidebarOpen: boolean;
+  authUser: User | null;
   theme: "dark" | "light";
+  setAuthUser: (user: User | null) => void;
   toggleTheme: () => void;
   createSession: () => string;
   setActiveSession: (id: string) => void;
@@ -59,7 +63,9 @@ export const useChatStore = create<AppStore>()(
       activeSessionId: null,
       isLoading: false,
       sidebarOpen: false,
+      authUser: null,
       theme: "dark",
+      setAuthUser: (user) => set({ authUser: user }),
       toggleTheme: () => {
         const newTheme = get().theme === "dark" ? "light" : "dark";
         document.documentElement.className = newTheme;

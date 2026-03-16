@@ -12,6 +12,8 @@ import {
 } from "date-fns";
 import { useChatStore, type Session } from "@/store/chatStore";
 import DiamondIcon from "./DiamondIcon";
+import { supabase } from "@/lib/supabase";
+import AuthModal from "@/components/auth/AuthModal";
 
 function groupSessions(sessions: Session[]) {
   const today: Session[] = [];
@@ -51,8 +53,12 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
     currentUser,
     theme,
     toggleTheme,
+    authUser,
   } = useChatStore();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   const handleNew = () => {
     createSession();
@@ -81,11 +87,11 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
               onClick={() => handleSelect(s.id)}
               className={`group flex items-center h-10 rounded-xl px-3 cursor-pointer transition-all duration-150 ${
                 active
-                  ? "bg-qm-elevated border-l-2 border-qm-green text-qm-text"
+                  ? "bg-qm-elevated border-l-2 border-qm-accent text-qm-text"
                   : "text-qm-text-sec hover:bg-qm-elevated hover:text-qm-text"
               }`}
             >
-              <span className="flex-1 text-sm truncate max-w-[160px]">
+              <span className="flex-1 text-sm truncate max-w-[140px]">
                 {s.title.length > 28 ? s.title.slice(0, 28) + "…" : s.title}
               </span>
               <span className="text-qm-text-muted text-[11px] ml-auto mr-1 group-hover:hidden flex-shrink-0">
@@ -114,20 +120,15 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
                   </button>
                 </div>
               ) : (
-                <>
-                  {/* <span className="text-qm-text-muted text-[11px] mr-1 group-hover:hidden">
-                    {shortTime(s.updatedAt)}
-                  </span> */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmId(s.id);
-                    }}
-                    className="hidden group-hover:block text-qm-text-muted hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmId(s.id);
+                  }}
+                  className="hidden group-hover:block text-qm-text-muted hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
               )}
             </div>
           );
@@ -146,7 +147,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
         </div>
         <button
           onClick={handleNew}
-          className="w-full flex items-center justify-center gap-2 rounded-full border border-qm-green text-qm-green py-2 text-sm font-medium hover:bg-qm-green hover:text-qm-base transition-all duration-150"
+          className="w-full flex items-center justify-center gap-2 rounded-full border border-qm-accent text-qm-accent py-2 text-sm font-medium hover:bg-qm-accent hover:text-qm-base transition-all duration-150"
         >
           <Plus size={16} /> New Chat
         </button>
@@ -162,23 +163,117 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
 
       {/* Bottom */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-green">
-            {currentUser.name[0]}
+        {authUser ? (
+          // Logged in user
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-accent">
+              {authUser.email?.[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-qm-text font-medium truncate">
+                {authUser.user_metadata?.full_name || authUser.email}
+              </p>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="text-qm-text-muted hover:text-qm-text transition-colors"
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button
+              onClick={() => setConfirmSignOut(true)}
+              className="text-qm-text-muted hover:text-red-400 transition-colors text-[11px]"
+            >
+              Sign out
+            </button>
           </div>
-          <div className="flex-1">
-            <p className="text-sm text-qm-text font-medium">
-              Welcome, {currentUser.name}!
+        ) : (
+          // Guest user
+          <div>
+            <p className="text-sm font-semibold text-qm-text mb-0.5">
+              Get responses tailored to you
             </p>
+            <p className="text-[12px] text-qm-text-sec mb-3 leading-relaxed">
+              Log in to upload your own data and save conversations.
+            </p>
+            <button
+              onClick={() => {
+                setAuthMode("login");
+                setShowAuthModal(true);
+              }}
+              className="w-full rounded-xl border border-border py-2 text-sm text-qm-text font-medium hover:bg-qm-elevated transition-colors mb-2"
+            >
+              Log in
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode("signup");
+                setShowAuthModal(true);
+              }}
+              className="w-full rounded-xl bg-qm-accent py-2 text-sm text-qm-base font-medium hover:opacity-90 transition-opacity mb-3"
+            >
+              Sign up for free
+            </button>
+            {/* Guest user info */}
+            <div className="flex items-center gap-2 pt-3 border-t border-border">
+              <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-accent">
+                {currentUser.name[0]}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-qm-text font-medium">
+                  Welcome, {currentUser.name}!
+                </p>
+              </div>
+              <button
+                onClick={toggleTheme}
+                className="text-qm-text-muted hover:text-qm-text transition-colors"
+              >
+                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="text-qm-text-muted hover:text-qm-text transition-colors"
-          >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-        </div>
+        )}
       </div>
+
+      {/* Sign out confirmation */}
+      {confirmSignOut && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-qm-surface border border-border rounded-2xl p-6 w-full max-w-[320px]">
+            <h3 className="text-base font-semibold text-qm-text mb-2">
+              Sign out?
+            </h3>
+            <p className="text-sm text-qm-text-sec mb-5">
+              You will be returned to guest mode. Your account data will remain
+              safe.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSignOut(false)}
+                className="flex-1 border border-border rounded-xl py-2 text-sm text-qm-text hover:bg-qm-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  supabase.auth.signOut();
+                  setConfirmSignOut(false);
+                }}
+                className="flex-1 bg-red-500 hover:bg-red-600 rounded-xl py-2 text-sm text-white font-medium transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          defaultMode={authMode}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
     </div>
   );
 };
