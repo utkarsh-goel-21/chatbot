@@ -9,6 +9,10 @@ const Index = () => {
 
   useEffect(() => {
     document.documentElement.className = theme;
+    const color = theme === "dark" ? "%23B86830" : "%23D4813A";
+    const svg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2L22 12L12 22L2 12Z' fill='${color}' opacity='0.3'/><path d='M12 2L22 12L12 22L2 12Z' stroke='${color}' stroke-width='1.5'/><path d='M12 7L17 12L12 17L7 12Z' fill='${color}'/></svg>`;
+    const link = document.querySelector("link[rel='icon']") as HTMLLinkElement;
+    if (link) link.href = svg;
   }, [theme]);
 
   return (
