@@ -3,7 +3,6 @@ uvicorn
 groq
 sqlalchemy
 python-dotenv
-chromadb
 requests
 psycopg2-binary
 pypdf2
