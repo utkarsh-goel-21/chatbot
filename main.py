@@ -117,6 +117,8 @@ def chat(request: ChatRequest):
             sql = generate_sql(question, request.user_id)
             if sql.strip() == "CANNOT_ANSWER":
                 answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
+            elif sql.strip() == "ACCESS_DENIED":
+                answer = "I'm sorry, but I can only show you your own data. I can't access information belonging to other customers."
             else:
                 raw_result = execute_sql(sql)
                 system_prompt = """You are a helpful business assistant.
