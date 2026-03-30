@@ -159,7 +159,7 @@ Write a business insight paragraph specifically about: {topic}
 
 Insight:"""
 
-        insight_text = call_llm(prompt=prompt, system_prompt=system_prompt)
+        insight_text = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=200)
 
         documents.append({
             "id": f"customer_{customer_id}_insight_{i+1}",

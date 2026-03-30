@@ -19,4 +19,4 @@ User Question: {user_question}
 
 Answer:"""
 
-    return call_llm(prompt=prompt, system_prompt=system_prompt, history=history)
+    return call_llm(prompt=prompt, system_prompt=system_prompt, history=history, max_tokens=512)

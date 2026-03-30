@@ -25,5 +25,5 @@ Reply with ONLY one word: TEXT_TO_SQL, RAG, or BLOCKED. Nothing else."""
 
     prompt = f"User Question: {user_question}"
 
-    result = call_llm(prompt=prompt, system_prompt=system_prompt, history=history)
+    result = call_llm(prompt=prompt, system_prompt=system_prompt, history=history, max_tokens=10)
     return result.strip()

@@ -33,7 +33,7 @@ def _validate_sql(sql: str, customer_id: int) -> str | None:
     return None
 
 
-def generate_sql(user_question: str, user_id: int, history: list = None) -> str:
+def generate_sql(user_question: str, user_id: int, history: list = None, error_feedback: str = None) -> str:
     schema = get_schema(user_id)
 
     system_prompt = f"""You are an expert SQL generator for a PostgreSQL database (AdventureWorks).
@@ -48,7 +48,13 @@ CRITICAL RULES:
 4. When joining customer info, use: sales.customer.personid = person.person.businessentityid
 5. When joining order details, use: sales.salesorderheader.salesorderid = sales.salesorderdetail.salesorderid
 6. When joining products, use: sales.salesorderdetail.productid = production.product.productid
-7. If the question asks for something that cannot be determined from the available columns, return exactly: CANNOT_ANSWER
+7. If the question asks for something that CLEARLY cannot be determined from the available columns, return exactly: CANNOT_ANSWER
+   BUT be generous — if a reasonable query CAN be constructed, write it. Only return CANNOT_ANSWER as an absolute last resort.
+8. For limiting results, you MUST use PostgreSQL syntax: LIMIT N (DO NOT use TOP N).
+9. Use standard PostgreSQL date functions (e.g., EXTRACT(YEAR FROM date_column)).
+10. For case-insensitive text matching, use ILIKE.
+11. ALWAYS add LIMIT 100 to queries that return rows (not to COUNT/SUM/AVG aggregations).
+12. Keep queries simple and efficient. Prefer straightforward JOINs over subqueries when possible.
 
 Do not explain anything. Do not add markdown. Just return the raw SQL query."""
 
@@ -60,15 +66,19 @@ Do not explain anything. Do not add markdown. Just return the raw SQL query."""
             history_text += f"{role_prefix}: {msg['content']}\n"
         history_text += "\n"
 
+    error_context = ""
+    if error_feedback:
+        error_context = f"\n[CRITICAL]: Your previous SQL attempt failed with this Postgres error:\n{error_feedback}\nFix the syntax and try again.\n"
+
     prompt = f"""Database Schema:
 {schema}
 
 Customer ID: {user_id}
 {history_text}User Question: {user_question}
-
+{error_context}
 SQL Query:"""
 
-    sql = call_llm(prompt=prompt, system_prompt=system_prompt)
+    sql = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=256)
     sql = sql.strip()
 
     # Strip markdown fences if LLM wraps the SQL

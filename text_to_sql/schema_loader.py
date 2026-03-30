@@ -1,19 +1,15 @@
-from sqlalchemy import create_engine, inspect, text
 import os
+from sqlalchemy import inspect, text
+from text_to_sql.db_setup import get_engine
 from dotenv import load_dotenv
 
 load_dotenv()
 
 _schema_cache = None
 
-
 def reset_schema_cache():
     global _schema_cache
     _schema_cache = None
-
-
-def get_engine():
-    return create_engine(os.getenv("DATABASE_URL"))
 
 
 def _should_skip_distinct(col_name: str) -> bool:

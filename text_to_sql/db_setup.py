@@ -1,11 +1,12 @@
 import os
 from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def get_engine():
-    return create_engine(os.getenv("DATABASE_URL"))
+    return create_engine(os.getenv("DATABASE_URL"), poolclass=NullPool)
 
 def setup_database():
     """Verify AdventureWorks is reachable and ensure supporting tables exist."""

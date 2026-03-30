@@ -115,26 +115,40 @@ def chat(request: ChatRequest):
     route = route_query(question, request.history)
 
     if route == "TEXT_TO_SQL":
-        try:
-            sql = generate_sql(question, request.user_id, request.history)
-            if sql.strip() == "CANNOT_ANSWER":
-                answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
-            elif sql.strip() == "ACCESS_DENIED":
-                answer = "I'm sorry, but I can only show you your own data. I can't access information belonging to other customers."
-            else:
-                raw_result = execute_sql(sql)
-                system_prompt = """You are a helpful business assistant.
+        error_feedback = None
+        max_retries = 2
+        success = False
+        
+        for attempt in range(max_retries):
+            try:
+                sql = generate_sql(question, request.user_id, request.history, error_feedback)
+                if sql.strip() == "CANNOT_ANSWER":
+                    answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
+                    success = True
+                    break
+                elif sql.strip() == "ACCESS_DENIED":
+                    answer = "I'm sorry, but I can only show you your own data. I can't access information belonging to other customers."
+                    success = True
+                    break
+                else:
+                    raw_result = execute_sql(sql)
+                    system_prompt = """You are a helpful business assistant.
 You will be given a user question and raw database results.
 Convert the raw results into a clean, concise natural language answer.
 Do not mention SQL or databases in your response.
 IMPORTANT: Only answer based on the data provided. Do not make assumptions or invent information not present in the results."""
-                prompt = f"""User Question: {question}
+                    prompt = f"""User Question: {question}
 Raw Database Result: {raw_result}
 Answer:"""
-                answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
-        except Exception as e:
-            print(f"TEXT_TO_SQL ERROR: {e}")
-            answer = "I couldn't process that query. Try asking something more specific like 'How many orders do I have?' or 'What products have I purchased?'"
+                    answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history, max_tokens=512)
+                    success = True
+                    break
+            except Exception as e:
+                print(f"TEXT_TO_SQL syntax/execution error on attempt {attempt+1}: {e}")
+                error_feedback = str(e)
+                
+        if not success:
+            answer = "I couldn't process that query after multiple attempts. Try asking something more specific like 'How many orders do I have?' or 'What products have I purchased?'"
 
     elif route == "RAG":
         answer = generate_rag_answer(question, request.user_id, request.history)
@@ -147,7 +161,7 @@ If they said hello, greet them. If they asked what you can do, explain you can p
 If they asked a completely random or nonsense question, gently say you're an AI built specifically for business analytics and guide them back on track."""
         
         prompt = f"User Message: {question}\n\nYour Response:"
-        answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
+        answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history, max_tokens=150)
 
     else:
         answer = "I was unable to understand your question. Please try again."
