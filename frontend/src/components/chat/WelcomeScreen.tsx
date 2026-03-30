@@ -2,6 +2,7 @@ import DiamondIcon from "./DiamondIcon";
 
 interface WelcomeScreenProps {
   onSuggestionClick: (text: string) => void;
+  userName: string;
 }
 
 const suggestions = [
@@ -11,11 +12,12 @@ const suggestions = [
   "How has our business been performing?",
 ];
 
-const WelcomeScreen = ({ onSuggestionClick }: WelcomeScreenProps) => (
+const WelcomeScreen = ({ onSuggestionClick, userName }: WelcomeScreenProps) => (
   <div className="flex-1 flex flex-col items-center justify-center px-4">
     <DiamondIcon size={48} className="text-qm-green" />
-    <h1 className="text-[28px] max-sm:text-[22px] font-bold text-qm-text mt-4">
-      Ask anything about your data
+    <h1 className="text-[28px] max-sm:text-[22px] font-bold text-qm-text mt-4 text-center">
+      Welcome, {userName.split(" ")[0]}! <br />
+      <span className="text-[20px] text-qm-text-sec font-medium">Ask anything about your data.</span>
     </h1>
     {/* <p className="text-[15px] text-qm-text-sec max-w-[420px] text-center mt-3 leading-relaxed">
       Powered by Text-to-SQL and RAG — get instant answers from your database and documents.

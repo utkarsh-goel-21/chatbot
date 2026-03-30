@@ -8,6 +8,15 @@ import WelcomeScreen from "./WelcomeScreen";
 import ChatInput from "./ChatInput";
 import AuthModal from "@/components/auth/AuthModal";
 
+function uuidToInt53(uuid: string): number {
+  let hash = 0;
+  for (let i = 0; i < uuid.length; i++) {
+    hash = (hash << 5) - hash + uuid.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 const ChatArea = () => {
   const {
     sessions,
@@ -31,6 +40,9 @@ const ChatArea = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [signupMode, setSignupMode] = useState(false);
+
+  const activeUserId = authUser ? uuidToInt53(authUser.id) : currentUser.id;
+  const activeUserName = authUser?.user_metadata?.full_name || authUser?.email || currentUser.name;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,7 +71,7 @@ const ChatArea = () => {
       try {
         const res = await sendChatMessage(
           text,
-          currentUser.id,
+          activeUserId,
           messages.map((m) => ({ role: m.role, content: m.content })),
         );
         addMessage(sessionId, {
@@ -99,7 +111,7 @@ const ChatArea = () => {
     }
     setIsUploading(true);
     try {
-      const res = await uploadFile(file, currentUser.id);
+      const res = await uploadFile(file, activeUserId);
       addMessage(sessionId, {
         id: crypto.randomUUID(),
         role: "ai",
@@ -171,7 +183,7 @@ const ChatArea = () => {
 
       {/* Messages */}
       {messages.length === 0 && !isLoading ? (
-        <WelcomeScreen onSuggestionClick={handleSuggestion} />
+        <WelcomeScreen onSuggestionClick={handleSuggestion} userName={activeUserName} />
       ) : (
         <div className="flex-1 overflow-y-auto scrollbar-thin px-6 max-sm:px-5 py-6">
           <div className="max-w-[760px] mx-auto space-y-6">
@@ -191,6 +203,7 @@ const ChatArea = () => {
         inputRef={inputRef}
         onUpload={handleUpload}
         isUploading={isUploading}
+        isAuthenticated={!!authUser}
       />
 
       {/* Auth Modal */}

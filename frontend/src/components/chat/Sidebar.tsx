@@ -10,10 +10,19 @@ import {
   differenceInHours,
   differenceInDays,
 } from "date-fns";
-import { useChatStore, type Session } from "@/store/chatStore";
+import { useChatStore, USERS, type Session } from "@/store/chatStore";
 import DiamondIcon from "./DiamondIcon";
 import { supabase } from "@/lib/supabase";
 import AuthModal from "@/components/auth/AuthModal";
+
+function uuidToInt53(uuid: string): number {
+  let hash = 0;
+  for (let i = 0; i < uuid.length; i++) {
+    hash = (hash << 5) - hash + uuid.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
 function groupSessions(sessions: Session[]) {
   const today: Session[] = [];
@@ -51,6 +60,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
     setActiveSession,
     deleteSession,
     currentUser,
+    setCurrentUser,
     theme,
     toggleTheme,
     authUser,
@@ -70,7 +80,10 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
     onClose?.();
   };
 
-  const groups = groupSessions(sessions);
+  const activeUserId = authUser ? uuidToInt53(authUser.id) : currentUser.id;
+  const userSessions = sessions.filter((s) => s.userId === activeUserId);
+
+  const groups = groupSessions(userSessions);
 
   const renderGroup = (label: string, items: Session[]) => {
     if (items.length === 0) return null;
@@ -220,13 +233,36 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
                 {currentUser.name[0]}
               </div>
               <div className="flex-1">
-                <p className="text-sm text-qm-text font-medium">
-                  Welcome, {currentUser.name}!
+                <p className="text-sm text-qm-text font-medium flex items-center gap-2">
+                  <span className="truncate">Welcome, {currentUser.name.split(" ")[0]}!</span>
                 </p>
               </div>
+              
+              {/* Demo user toggle */}
+              <button
+                onClick={() => {
+                  const nextUser = USERS.find(u => u.id !== currentUser.id) || USERS[0];
+                  setCurrentUser(nextUser);
+                  
+                  // Auto switch to their latest session
+                  const nextUserSessions = sessions.filter((s) => s.userId === nextUser.id);
+                  if (nextUserSessions.length === 0) {
+                     createSession();
+                     // State updates asynchronously, so createSession will make a new one with the newly set user id because activeUserId will change on next render
+                  } else {
+                     const sorted = [...nextUserSessions].sort((a, b) => b.updatedAt - a.updatedAt);
+                     setActiveSession(sorted[0].id);
+                  }
+                }}
+                className="text-[10px] font-semibold uppercase tracking-wider text-qm-accent border border-qm-accent/30 rounded px-2 py-1 hover:bg-qm-accent/10 transition-colors"
+                title="Switch Demo User"
+              >
+                Switch
+              </button>
+
               <button
                 onClick={toggleTheme}
-                className="text-qm-text-muted hover:text-qm-text transition-colors"
+                className="text-qm-text-muted hover:text-qm-text transition-colors ml-1"
               >
                 {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>

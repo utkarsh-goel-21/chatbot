@@ -7,14 +7,10 @@ export interface AppUser {
   email: string;
 }
 
-const USERS: AppUser[] = [
+export const USERS: AppUser[] = [
   { id: 11091, name: "Dalton Perez", email: "dalton.perez@bizbot.com" },
   { id: 11176, name: "Mason Roberts", email: "mason.roberts@bizbot.com" },
 ];
-
-const getRandomUser = (): AppUser => {
-  return USERS[Math.floor(Math.random() * USERS.length)];
-};
 
 export interface Message {
   id: string;
@@ -31,6 +27,7 @@ export interface Session {
   createdAt: number;
   updatedAt: number;
   messages: Message[];
+  userId: string | number;
 }
 
 interface AppStore {
@@ -41,6 +38,7 @@ interface AppStore {
   sidebarOpen: boolean;
   authUser: User | null;
   theme: "dark" | "light";
+  setCurrentUser: (user: AppUser) => void;
   setAuthUser: (user: User | null) => void;
   toggleTheme: () => void;
   createSession: () => string;
@@ -56,13 +54,14 @@ const genId = () => crypto.randomUUID();
 export const useChatStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      currentUser: getRandomUser(),
+      currentUser: USERS[0],
       sessions: [],
       activeSessionId: null,
       isLoading: false,
       sidebarOpen: false,
       authUser: null,
       theme: "dark",
+      setCurrentUser: (user) => set({ currentUser: user }),
       setAuthUser: (user) => set({ authUser: user }),
       toggleTheme: () => {
         const newTheme = get().theme === "dark" ? "light" : "dark";
@@ -71,12 +70,16 @@ export const useChatStore = create<AppStore>()(
       },
       createSession: () => {
         const id = genId();
+        const state = get();
+        const activeUserId = state.authUser?.id || state.currentUser.id;
+        
         const session: Session = {
           id,
           title: "New Conversation",
           createdAt: Date.now(),
           updatedAt: Date.now(),
           messages: [],
+          userId: activeUserId,
         };
         set((s) => ({
           sessions: [session, ...s.sessions],
@@ -90,12 +93,14 @@ export const useChatStore = create<AppStore>()(
         const remaining = state.sessions.filter((s) => s.id !== id);
         if (remaining.length === 0) {
           const newId = genId();
+          const activeUserId = state.authUser?.id || state.currentUser.id;
           const session: Session = {
             id: newId,
             title: "New Conversation",
             createdAt: Date.now(),
             updatedAt: Date.now(),
             messages: [],
+            userId: activeUserId,
           };
           set({ sessions: [session], activeSessionId: newId });
         } else {
@@ -136,11 +141,22 @@ export const useChatStore = create<AppStore>()(
   ),
 );
 
-// Initialize on first load
+// Initialize gracefully on load (will wipe old history missing userIds)
 const state = useChatStore.getState();
-if (state.sessions.length === 0) {
+const activeUserId = state.authUser?.id || state.currentUser.id;
+
+// Filter out broken sessions from older versions without a userId
+const validSessions = state.sessions.filter(s => s.userId);
+if (validSessions.length !== state.sessions.length) {
+    useChatStore.setState({ sessions: validSessions });
+}
+
+// Find sessions for active user
+const userSessions = validSessions.filter((s) => s.userId === activeUserId);
+
+if (userSessions.length === 0) {
   state.createSession();
-} else if (!state.activeSessionId) {
-  const sorted = [...state.sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+} else if (!state.activeSessionId || !userSessions.find(s => s.id === state.activeSessionId)) {
+  const sorted = [...userSessions].sort((a, b) => b.updatedAt - a.updatedAt);
   state.setActiveSession(sorted[0].id);
 }

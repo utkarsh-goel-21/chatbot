@@ -8,6 +8,7 @@ interface ChatInputProps {
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   onUpload?: (file: File) => void;
   isUploading?: boolean;
+  isAuthenticated?: boolean;
 }
 
 const ChatInput = ({
@@ -16,6 +17,7 @@ const ChatInput = ({
   inputRef: externalRef,
   onUpload,
   isUploading,
+  isAuthenticated,
 }: ChatInputProps) => {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const ref = externalRef || internalRef;
@@ -67,7 +69,8 @@ const ChatInput = ({
               <button
                 onClick={() => {
                   setShowUploadMenu(false);
-                  setShowDemoPopup(true);
+                  if (isAuthenticated) csvInputRef.current?.click();
+                  else setShowDemoPopup(true);
                 }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-qm-text hover:bg-qm-surface transition-colors w-full text-left"
               >
@@ -78,7 +81,8 @@ const ChatInput = ({
               <button
                 onClick={() => {
                   setShowUploadMenu(false);
-                  setShowDemoPopup(true);
+                  if (isAuthenticated) docInputRef.current?.click();
+                  else setShowDemoPopup(true);
                 }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-qm-text hover:bg-qm-surface transition-colors w-full text-left"
               >

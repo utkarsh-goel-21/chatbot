@@ -10,6 +10,7 @@ interface AuthModalProps {
 
 const AuthModal = ({ onClose, defaultMode = "login" }: AuthModalProps) => {
   const [mode, setMode] = useState<"login" | "signup">(defaultMode);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,14 +35,22 @@ const AuthModal = ({ onClose, defaultMode = "login" }: AuthModalProps) => {
     setError(null);
     setSuccess(null);
 
-    if (!email || !password) {
+    if (!email || !password || (mode === "signup" && !name)) {
       setError("Please fill in all fields.");
       setLoading(false);
       return;
     }
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
       if (error) setError(error.message);
       else setSuccess("Check your email for a confirmation link!");
     } else {
@@ -115,6 +124,17 @@ const AuthModal = ({ onClose, defaultMode = "login" }: AuthModalProps) => {
           <span className="text-xs text-qm-text-muted">or</span>
           <div className="flex-1 border-t border-border" />
         </div>
+
+        {/* Name input (Signup only) */}
+        {mode === "signup" && (
+          <input
+            type="text"
+            placeholder="First Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-qm-elevated border border-border rounded-xl px-4 py-2.5 text-sm text-qm-text placeholder:text-qm-text-muted outline-none focus:border-qm-accent transition-colors mb-3"
+          />
+        )}
 
         {/* Email input */}
         <input
