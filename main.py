@@ -116,7 +116,7 @@ def chat(request: ChatRequest):
 
     if route == "TEXT_TO_SQL":
         try:
-            sql = generate_sql(question, request.user_id)
+            sql = generate_sql(question, request.user_id, request.history)
             if sql.strip() == "CANNOT_ANSWER":
                 answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
             elif sql.strip() == "ACCESS_DENIED":
@@ -140,7 +140,14 @@ Answer:"""
         answer = generate_rag_answer(question, request.user_id, request.history)
 
     elif route == "BLOCKED":
-        answer = "I'm sorry, but I can't assist with that request."
+        system_prompt = """You are BizBot, a friendly and professional AI assistant for a business data platform.
+The user just sent a conversational, generic, or off-topic message (e.g. "hello", "why", "who are you").
+Respond politely and naturally, but keep your response very brief (1-2 sentences).
+If they said hello, greet them. If they asked what you can do, explain you can parse their CSV sales data and PDF documents. 
+If they asked a completely random or nonsense question, gently say you're an AI built specifically for business analytics and guide them back on track."""
+        
+        prompt = f"User Message: {question}\n\nYour Response:"
+        answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
 
     else:
         answer = "I was unable to understand your question. Please try again."

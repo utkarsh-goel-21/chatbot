@@ -33,11 +33,12 @@ def _validate_sql(sql: str, customer_id: int) -> str | None:
     return None
 
 
-def generate_sql(user_question: str, user_id: int) -> str:
+def generate_sql(user_question: str, user_id: int, history: list = None) -> str:
     schema = get_schema(user_id)
 
     system_prompt = f"""You are an expert SQL generator for a PostgreSQL database (AdventureWorks).
 You will be given a database schema, a user question, and a customer ID.
+You may also receive conversation history to understand context for follow-up questions (e.g., "what about last year?", "also tell the quantity").
 Your job is to return ONLY a valid SQL query that answers the question.
 
 CRITICAL RULES:
@@ -51,11 +52,19 @@ CRITICAL RULES:
 
 Do not explain anything. Do not add markdown. Just return the raw SQL query."""
 
+    history_text = ""
+    if history:
+        history_text = "Recent Conversation Context:\n"
+        for msg in history[-6:]:
+            role_prefix = "User" if msg["role"] == "user" else "Assistant"
+            history_text += f"{role_prefix}: {msg['content']}\n"
+        history_text += "\n"
+
     prompt = f"""Database Schema:
 {schema}
 
 Customer ID: {user_id}
-User Question: {user_question}
+{history_text}User Question: {user_question}
 
 SQL Query:"""
 
