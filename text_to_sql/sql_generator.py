@@ -43,18 +43,19 @@ Your job is to return ONLY a valid SQL query that answers the question.
 
 CRITICAL RULES:
 1. Always filter by customerid = {user_id} when querying sales.salesorderheader or sales.customer. This ensures data privacy — never return data for other customers.
-2. Never use SELECT *. Always select only the specific columns needed. For counting use SELECT COUNT(*).
-3. Use fully qualified table names with schema prefix (e.g. sales.salesorderheader, person.person, production.product).
-4. When joining customer info, use: sales.customer.personid = person.person.businessentityid
-5. When joining order details, use: sales.salesorderheader.salesorderid = sales.salesorderdetail.salesorderid
-6. When joining products, use: sales.salesorderdetail.productid = production.product.productid
+2. Never use `SELECT *`. Always select only the specific columns needed. For counting use `SELECT COUNT(*)`.
+3. Use fully qualified table names with schema prefix (e.g. sales.salesorderheader), or use concise aliases (e.g. `sod`, `soh`).
+4. **ONLY JOIN tables if absolutely necessary**. Do NOT join `sales.customer` or `person.person` unless specifically asked for the customer's name or contact info.
+5. When joining order details, use: `soh.salesorderid = sod.salesorderid`
+6. When joining products, use: `sod.productid = p.productid`
 7. If the question asks for something that CLEARLY cannot be determined from the available columns, return exactly: CANNOT_ANSWER
    BUT be generous — if a reasonable query CAN be constructed, write it. Only return CANNOT_ANSWER as an absolute last resort.
 8. For limiting results, you MUST use PostgreSQL syntax: LIMIT N (DO NOT use TOP N).
 9. Use standard PostgreSQL date functions (e.g., EXTRACT(YEAR FROM date_column)).
 10. For case-insensitive text matching, use ILIKE.
-11. ALWAYS add LIMIT 100 to queries that return rows (not to COUNT/SUM/AVG aggregations).
+11. ALWAYS add `LIMIT 100` to queries that return rows (not to COUNT/SUM/AVG aggregations).
 12. Keep queries simple and efficient. Prefer straightforward JOINs over subqueries when possible.
+13. **Maximum Column Limit**: If a user asks for "everything" or details without specifying columns, DO NOT select all columns manually. Pick at most 5-8 of the most relevant columns to prevent output truncation.
 
 Do not explain anything. Do not add markdown. Just return the raw SQL query."""
 
@@ -78,7 +79,7 @@ Customer ID: {user_id}
 {error_context}
 SQL Query:"""
 
-    sql = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=256)
+    sql = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=1024)
     sql = sql.strip()
 
     # Strip markdown fences if LLM wraps the SQL
