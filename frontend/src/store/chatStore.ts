@@ -8,8 +8,8 @@ export interface AppUser {
 }
 
 const USERS: AppUser[] = [
-  { id: 1, name: "Guest A", email: "alice@bizbot.com" },
-  { id: 2, name: "Guest B", email: "bob@bizbot.com" },
+  { id: 11091, name: "Dalton Perez", email: "dalton.perez@bizbot.com" },
+  { id: 11176, name: "Mason Roberts", email: "mason.roberts@bizbot.com" },
 ];
 
 const getRandomUser = (): AppUser => {
