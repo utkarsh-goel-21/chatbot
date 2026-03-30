@@ -7,11 +7,11 @@ from sqlalchemy import text
 from text_to_sql.db_setup import get_engine
 
 
-def sanitize_table_name(filename: str, user_id: int) -> str:
+def sanitize_table_name(filename: str, customer_id: int) -> str:
     name = os.path.splitext(filename)[0]
     name = re.sub(r'[^a-zA-Z0-9_]', '_', name).lower()
     name = re.sub(r'_+', '_', name).strip('_')
-    return f"user_{user_id}_{name}"
+    return f"customer_{customer_id}_{name}"
 
 
 def sanitize_column_name(col: str) -> str:
@@ -20,9 +20,9 @@ def sanitize_column_name(col: str) -> str:
     return col or "column"
 
 
-def process_csv(contents: bytes, filename: str, user_id: int) -> str:
+def process_csv(contents: bytes, filename: str, customer_id: int) -> str:
     engine = get_engine()
-    table_name = sanitize_table_name(filename, user_id)
+    table_name = sanitize_table_name(filename, customer_id)
 
     decoded = contents.decode("utf-8")
     reader = csv.DictReader(io.StringIO(decoded))
@@ -36,7 +36,7 @@ def process_csv(contents: bytes, filename: str, user_id: int) -> str:
     for h in original_headers:
         san = sanitize_column_name(h)
         # Rename columns that conflict with our auto-added columns
-        if san in {"id", "user_id"}:
+        if san in {"id", "customer_id"}:
             san = f"orig_{san}"
         sanitized_headers.append(san)
 
@@ -46,57 +46,62 @@ def process_csv(contents: bytes, filename: str, user_id: int) -> str:
     with engine.connect() as conn:
         # Drop if exists and recreate
         conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
-        conn.execute(text(f'CREATE TABLE "{table_name}" (id SERIAL PRIMARY KEY, user_id INTEGER, {col_defs})'))
+        conn.execute(text(
+            f'CREATE TABLE "{table_name}" '
+            f'(id SERIAL PRIMARY KEY, customer_id INTEGER, {col_defs})'
+        ))
+        conn.commit()
 
-        # Insert rows in batches
-        batch = []
-        batch_size = 500
+    # --- Fast bulk insert using psycopg2 COPY ---
+    # Prepare CSV buffer with customer_id column prepended
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["customer_id"] + sanitized_headers)
+    for row in rows:
+        values = [customer_id]
+        for orig in original_headers:
+            values.append(row.get(orig, ""))
+        writer.writerow(values)
+    buffer.seek(0)
 
-        for row in rows:
-            new_row = {"user_id": user_id}
-            for orig, san in zip(original_headers, sanitized_headers):
-                new_row[san] = row.get(orig, "")
-            batch.append(new_row)
+    # Get raw psycopg2 connection and use COPY FROM STDIN
+    raw_conn = engine.raw_connection()
+    try:
+        cursor = raw_conn.cursor()
+        col_list = ', '.join(f'"{c}"' for c in ["customer_id"] + sanitized_headers)
+        copy_sql = f'COPY "{table_name}" ({col_list}) FROM STDIN WITH CSV HEADER'
+        cursor.copy_expert(copy_sql, buffer)
+        raw_conn.commit()
+    finally:
+        raw_conn.close()
 
-            if len(batch) == batch_size:
-                col_names = ", ".join([f'"{c}"' for c in ["user_id"] + sanitized_headers])
-                placeholders = ", ".join([f":{c}" for c in ["user_id"] + sanitized_headers])
-                conn.execute(text(f'INSERT INTO "{table_name}" ({col_names}) VALUES ({placeholders})'), batch)
-                conn.commit()
-                batch = []
-
-        if batch:
-            col_names = ", ".join([f'"{c}"' for c in ["user_id"] + sanitized_headers])
-            placeholders = ", ".join([f":{c}" for c in ["user_id"] + sanitized_headers])
-            conn.execute(text(f'INSERT INTO "{table_name}" ({col_names}) VALUES ({placeholders})'), batch)
-            conn.commit()
-
-        # Register in uploaded_tables
+    # Register in uploaded_tables
+    with engine.connect() as conn:
         conn.execute(text("""
-            INSERT INTO uploaded_tables (user_id, table_name, original_filename)
-            VALUES (:user_id, :table_name, :filename)
+            INSERT INTO uploaded_tables (customer_id, table_name, original_filename)
+            VALUES (:customer_id, :table_name, :filename)
             ON CONFLICT DO NOTHING
-        """), {"user_id": user_id, "table_name": table_name, "filename": filename})
+        """), {"customer_id": customer_id, "table_name": table_name, "filename": filename})
         conn.commit()
 
     return table_name
 
 
-def process_pdf(contents: bytes, filename: str, user_id: int) -> int:
+def process_pdf(contents: bytes, filename: str, customer_id: int) -> int:
     reader = PdfReader(io.BytesIO(contents))
     full_text = ""
     for page in reader.pages:
         full_text += page.extract_text() or ""
 
-    return process_text_content(full_text, filename, user_id)
+    return process_text_content(full_text, filename, customer_id)
 
 
-def process_txt(contents: bytes, filename: str, user_id: int) -> int:
+def process_txt(contents: bytes, filename: str, customer_id: int) -> int:
     full_text = contents.decode("utf-8")
-    return process_text_content(full_text, filename, user_id)
+    return process_text_content(full_text, filename, customer_id)
 
 
-def process_text_content(text_content: str, filename: str, user_id: int) -> int:
+def process_text_content(text_content: str, filename: str, customer_id: int) -> int:
     # Split into chunks of ~500 characters with overlap
     chunk_size = 500
     overlap = 50
@@ -117,9 +122,9 @@ def process_text_content(text_content: str, filename: str, user_id: int) -> int:
     base_name = os.path.splitext(filename)[0]
     documents = [
         {
-            "id": f"user_{user_id}_{base_name}_chunk_{i}",
+            "id": f"customer_{customer_id}_{base_name}_chunk_{i}",
             "text": chunk,
-            "user_id": user_id
+            "user_id": customer_id,  # rag_documents column is still named user_id
         }
         for i, chunk in enumerate(chunks)
     ]
