@@ -17,19 +17,21 @@ from rag.generate_insights import generate_insight_documents
 from rag.embedder import embed_documents
 from text_to_sql.schema_loader import get_schema
 
+DEMO_CUSTOMERS = [11091, 11176]
+
 def seed():
     setup_database()
     engine = get_engine()
-    for uid in [1, 2]:
+    for cid in DEMO_CUSTOMERS:
         with engine.connect() as conn:
             count = conn.execute(text(
-                "SELECT COUNT(*) FROM rag_documents WHERE user_id = :uid"
-            ), {"uid": uid}).scalar()
+                "SELECT COUNT(*) FROM rag_documents WHERE user_id = :cid"
+            ), {"cid": cid}).scalar()
         if count > 0:
-            print(f"Insights already exist for user {uid}. Skipping generation.")
+            print(f"Insights already exist for customer {cid}. Skipping.")
             continue
-        print(f"Generating insights for user {uid}...")
-        docs = generate_insight_documents(uid)
+        print(f"Generating insights for customer {cid}...")
+        docs = generate_insight_documents(cid)
         embed_documents(docs)
     print("Warming up schema cache...")
     get_schema()
@@ -54,7 +56,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     question: str
-    user_id: int = 1
+    user_id: int = 11091
     history: list = []
 
 @app.get("/")
@@ -132,7 +134,7 @@ Answer:"""
                 answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history)
         except Exception as e:
             print(f"TEXT_TO_SQL ERROR: {e}")
-            answer = "I couldn't process that query. Try asking something more specific like 'How many products do we have?' or 'What transactions happened today?'"
+            answer = "I couldn't process that query. Try asking something more specific like 'How many orders do I have?' or 'What products have I purchased?'"
 
     elif route == "RAG":
         answer = generate_rag_answer(question, request.user_id, request.history)
