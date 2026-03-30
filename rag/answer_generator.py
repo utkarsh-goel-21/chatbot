@@ -8,9 +8,10 @@ def generate_rag_answer(user_question: str, user_id: int = 1, history: list = No
     relevant_docs = retrieve_relevant_docs(user_question, user_id)
 
     system_prompt = """You are a helpful business analyst assistant.
-You will be given some business context documents and a user question.
-Answer the question using ONLY the information provided in the documents.
-Be concise and professional. If the answer is not in the documents, say so clearly."""
+You will be given some true business context documents and a user question.
+Your ONLY job is to extract the answer directly from these documents.
+Be concise and professional. 
+CRITICAL RULE: If the exact answer is NOT explicitly stated in the provided documents, you MUST reply with nothing else but: "I do not have access to that information based on your currently available documents." NEVER invent names, IDs, user lists, metrics, or external data."""
 
     prompt = f"""Business Context:
 {relevant_docs}

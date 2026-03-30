@@ -1,18 +1,16 @@
 import os
-import requests
 from sqlalchemy import text
 from text_to_sql.db_setup import get_engine
 from dotenv import load_dotenv
+from fastembed import TextEmbedding
 
 load_dotenv()
 
-HF_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
+_embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 def get_embedding(text_input: str) -> list[float]:
-    headers = {"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"}
-    response = requests.post(HF_API_URL, headers=headers, json={"inputs": text_input})
-    response.raise_for_status()
-    return response.json()
+    vecs = list(_embedding_model.embed([text_input]))
+    return vecs[0].tolist()
 
 def retrieve_relevant_docs(user_question: str, user_id: int, n_results: int = 2) -> str:
     engine = get_engine()

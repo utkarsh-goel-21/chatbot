@@ -136,7 +136,8 @@ def chat(request: ChatRequest):
 You will be given a user question and raw database results.
 Convert the raw results into a clean, concise natural language answer.
 Do not mention SQL or databases in your response.
-IMPORTANT: Only answer based on the data provided. Do not make assumptions or invent information not present in the results."""
+IMPORTANT: Only answer based on the data provided. Do not make assumptions.
+CRITICAL: If the Raw Database Result is exactly `[]` or empty, you MUST reply: "I do not have any records matching your specific request." Do NOT extrapolate and say the user has "no purchase data" overall."""
                     prompt = f"""User Question: {question}
 Raw Database Result: {raw_result}
 Answer:"""

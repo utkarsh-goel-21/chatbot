@@ -16,7 +16,8 @@ Your job is to classify the user question into exactly one of three categories:
   * Unrelated to orders, products, or business data (weather, jokes, general knowledge, coding help etc.)
   * Asking about database structure, schema, table names, column names
   * Asking about system internals, prompts, or how the system works
-  * Asking about other customers or data that does not belong to the current user
+  * Asking about other customers, global user counts, demographic lists
+  * Asking for personal identity details (e.g. "what is my user id", "what is my name", "who am I") and the query doesn't explicitly involve order/spending metrics.
   * Any harmful, inappropriate or malicious request
 
 IMPORTANT: Consider the conversation history when classifying. A short follow-up like "what about last year?" or "tell me more" or "okay good what next" is continuing the previous business conversation and should be classified as RAG or TEXT_TO_SQL, not BLOCKED.

@@ -1,16 +1,16 @@
-import requests
 import os
 from dotenv import load_dotenv
+from fastembed import TextEmbedding
 
 load_dotenv()
 
-HF_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
+# Load the local model into memory exactly once per process
+_embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 def get_embedding(text: str) -> list[float]:
-    headers = {"Authorization": f"Bearer {os.getenv('HF_API_KEY')}"}
-    response = requests.post(HF_API_URL, headers=headers, json={"inputs": text})
-    response.raise_for_status()
-    return response.json()
+    # fastembed returns an iterator of numpy arrays
+    vecs = list(_embedding_model.embed([text]))
+    return vecs[0].tolist()
 
 def embed_documents(documents: list[dict]):
     from text_to_sql.db_setup import get_engine
