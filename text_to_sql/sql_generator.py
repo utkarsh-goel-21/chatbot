@@ -27,17 +27,22 @@ def _validate_sql(sql: str, customer_id: int) -> str | None:
             return "ACCESS_DENIED"  # Trying to access another user's uploaded table
 
     # ── Check 2: Base table isolation (row-level security) ──
-    # These shared tables MUST be filtered by customerid
-    base_tables = ["salesorderheader", "salesorderdetail", "customer"]
+    # These shared tables MUST be strictly filtered by the explicit user ID
+    base_tables = ["salesorderheader", "salesorderdetail", "customer", "person", "emailaddress", "businessentity"]
     touches_base = any(t in sql_lower for t in base_tables)
 
     if touches_base:
-        # Must contain the user's explicit ID
-        if str(customer_id) not in sql:
+        # Strictly enforce that an equality filter for this exact user ID exists in the query
+        isolation_pattern = rf'(?:customer_?id|user_?id|businessentityid|personid)\s*=\s*[\'"]?{customer_id}[\'"]?'
+        if not re.search(isolation_pattern, sql, re.IGNORECASE):
+            return "ACCESS_DENIED"
+            
+        # Block inequality bypasses (e.g. customerid != 11091)
+        if re.search(rf'(?:!|<>|>|<)\s*=\s*[\'"]?{customer_id}[\'"]?', sql, re.IGNORECASE):
             return "ACCESS_DENIED"
 
-        # Check for cross-tenant ID injection
-        id_matches = re.findall(r'(?:customer_?id|user_?id)\s*=\s*[\'"]?(\d+)[\'"]?', sql, re.IGNORECASE)
+        # Block cross-tenant ID injection for any other ID
+        id_matches = re.findall(r'(?:customer_?id|user_?id|businessentityid|personid)\s*=\s*[\'"]?(\d+)[\'"]?', sql, re.IGNORECASE)
         for match_id in id_matches:
             if int(match_id) != customer_id:
                 return "ACCESS_DENIED"

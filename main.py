@@ -99,7 +99,9 @@ RULES:
 4. PRESERVE exact counts, totals, and business logic. If an item appears 8 times, say "8 times". Do not round money.
 5. Accurately map the raw data to the user's question. If the data gives a total product count and a separate duplicate count, DO NOT mix them up or hallucinate one from the other.
 6. For duplicate analysis: list each duplicate item with its exact count.
-7. Be concise — 1-3 sentences for simple answers, short paragraphs for complex ones."""
+7. NEVER invent company names, vendor names, or external brand names unless they explicitly exist in the raw JSON data.
+8. The authenticated user is the CUSTOMER. NEVER refer to the user as a salesperson or employee unless the query result explicitly maps them as such.
+9. Be concise — 1-3 sentences for simple answers, short paragraphs for complex ones."""
 
 
 async def _run_text_to_sql(question: str, user_id: int, history: list) -> tuple[str, bool]:

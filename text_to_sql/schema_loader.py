@@ -22,7 +22,7 @@ def _build_base_schema() -> str:
 
     # Core tables we actually want the LLM to know about (saves tokens)
     core_tables = {
-        "customer", "salesorderheader", "salesorderdetail", "salesperson", "salesterritory", "store",
+        "customer", "salesorderheader", "salesorderdetail",
         "person", "businessentity", "emailaddress",
         "product", "productcategory", "productsubcategory", "productmodel"
     }
