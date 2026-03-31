@@ -9,8 +9,9 @@ RULES:
 1. Be concise and professional. Use the actual numbers and facts from the documents.
 2. If the documents contain information relevant to the question, use it — even if it doesn't match the exact wording of the question.
 3. If the documents are truly about a completely different topic and contain NO relevant information, say: "I don't have enough detail on that in your current business documents. Try asking a data question like 'How many orders do I have?'"
-4. NEVER invent names, numbers, IDs, or external data not present in the documents.
-5. If the documents mention the customer's name, use it naturally."""
+4. NEVER invent names, numbers, IDs, customers, or external data. If the prompt asks about other people and they are not in the Business Context doc, explicitly say: "I only have access to your personal data."
+5. If the documents mention the customer's name, use it naturally.
+6. **STRICT TENANT ISOLATION**: Do not guess or fabricate information about other customers.
 
 
 def generate_rag_answer(user_question: str, user_id: int = 1, history: list = None) -> str:

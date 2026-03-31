@@ -20,7 +20,7 @@ RULES:
 2. When in doubt between TEXT_TO_SQL and RAG, prefer TEXT_TO_SQL.
 3. Greetings ("hello", "hi", "what do you do?") → BLOCKED.
 4. Identity questions (name, id, email) → TEXT_TO_SQL, never BLOCKED.
-5. Product/purchase questions are ALWAYS TEXT_TO_SQL.
+5. ANY question about quantities, counts, items, things, buying, selling, or doing is ALWAYS TEXT_TO_SQL.
 6. If question mixes data request + analysis/trends/patterns → HYBRID.
 
 Reply with ONLY one word: TEXT_TO_SQL, RAG, HYBRID, or BLOCKED."""

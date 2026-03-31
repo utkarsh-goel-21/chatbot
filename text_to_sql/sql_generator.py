@@ -56,8 +56,7 @@ CRITICAL RULES:
 3. Use schema-qualified names for base tables (e.g. sales.salesorderheader). Use plain names for uploaded tables.
 4. Use concise aliases (soh, sod, p, c).
 5. JOIN tables intelligently based on foreign keys in the schema.
-6. If the question CLEARLY cannot be answered from the schema, return exactly: CANNOT_ANSWER
-   But be generous — if a reasonable query CAN be constructed, write it.
+6. If the question CLEARLY cannot be answered from the schema (e.g., asking about the weather), return exactly: CANNOT_ANSWER. However, if the question asks about business metrics using vague synonyms ("items", "things", "sales", "doing", "buying", "selling", "records"), you MUST map these to the closest matching tables (e.g., products, orders) and return a valid SQL query. NEVER return CANNOT_ANSWER for business-related questions.
 7. Use LIMIT N (PostgreSQL syntax, never TOP N). Add LIMIT 100 to row-returning queries (not COUNT/SUM/AVG).
 8. Use EXTRACT(YEAR FROM col) for dates, ILIKE for text matching.
 9. Keep queries simple. Prefer JOINs over subqueries.
@@ -69,6 +68,8 @@ CRITICAL RULES:
    - "Duplicates": Group by item/product. Use HAVING SUM(quantity) > 1 if quantity exists, else HAVING COUNT(*) > 1.
    - "Total Cost / Spent": SUM(price * quantity) if quantity exists. If only price exists, use SUM(price).
    - "Cost for each/individual cost": Expose the base unit price column without multiplication.
+   - **Pronouns & Ownership**: "I", "we", "my", "our", "us" ALL refer to the authenticated user. Always filter by customer_id/user_id = {user_id}.
+   - **Vague Nouns/Verbs ("items", "things", "did", "made")**: Intelligently map conversational terms to the most relevant primary data table and action available in the schema (e.g., items = products/records, did = ordered/purchased). Do not fail just because specific schema terms aren't used.
 13. For complex multi-part questions: if the question asks for mixed aggregations (e.g. scalar totals AND lists of items), output **MULTIPLE SEPARATE SELECT STATEMENTS** separated by a semicolon `;`. The system will execute all of them and combine the results. Do not force them into a single query with complex JOINs if they are logically different concepts.
 
 IDENTITY QUERIES:
