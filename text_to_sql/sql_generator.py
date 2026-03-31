@@ -1,98 +1,165 @@
 import re
-from utils.groq_client import call_llm
+from utils.groq_client import call_llm, call_llm_async
 from text_to_sql.schema_loader import get_schema
 
 
 def _validate_sql(sql: str, customer_id: int) -> str | None:
     """
     Validate generated SQL for tenant isolation.
-    Returns None if valid, or an error string if invalid.
+    Two-tier security:
+      1. Base tables (sales.*, person.*, etc.) → must have WHERE customerid = {customer_id}
+      2. Uploaded tables (customer_{id}_*) → table name must belong to this user (table-level)
+    Returns None if valid, or "ACCESS_DENIED" if invalid.
     """
     sql_upper = sql.upper()
+    sql_lower = sql.lower()
 
     # Block destructive statements
-    if any(kw in sql_upper for kw in ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE"]):
+    destructive = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "CREATE"]
+    if any(kw in sql_upper for kw in destructive):
         return "ACCESS_DENIED"
 
-    # Check if query touches customer-scoped tables without filtering
-    customer_tables = ["salesorderheader", "customer"]
-    touches_customer_table = any(t in sql.lower() for t in customer_tables)
+    # ── Check 1: Uploaded table isolation (table-level security) ──
+    # Find all references to customer_XXXXX_ tables in the SQL
+    uploaded_refs = re.findall(r'customer_(\d+)_\w+', sql_lower)
+    for ref_id in uploaded_refs:
+        if int(ref_id) != customer_id:
+            return "ACCESS_DENIED"  # Trying to access another user's uploaded table
 
-    if touches_customer_table:
-        # Must contain customerid = <correct id>
+    # ── Check 2: Base table isolation (row-level security) ──
+    # These shared tables MUST be filtered by customerid
+    base_tables = ["salesorderheader", "salesorderdetail", "customer"]
+    touches_base = any(t in sql_lower for t in base_tables)
+
+    if touches_base:
+        # Must contain the user's explicit ID
         if str(customer_id) not in sql:
             return "ACCESS_DENIED"
 
-        # Check for other customerid literals (cross-tenant attempt)
-        # Find all integers after "customerid" patterns
-        id_matches = re.findall(r"customerid\s*=\s*(\d+)", sql, re.IGNORECASE)
-        for match in id_matches:
-            if int(match) != customer_id:
+        # Check for cross-tenant ID injection
+        id_matches = re.findall(r'(?:customer_?id|user_?id)\s*=\s*[\'"]?(\d+)[\'"]?', sql, re.IGNORECASE)
+        for match_id in id_matches:
+            if int(match_id) != customer_id:
                 return "ACCESS_DENIED"
 
     return None
 
 
-def generate_sql(user_question: str, user_id: int, history: list = None, error_feedback: str = None) -> str:
-    schema = get_schema(user_id)
-
-    system_prompt = f"""You are an expert SQL generator for a PostgreSQL database (AdventureWorks).
-You will be given a database schema, a user question, and a customer ID.
-You may also receive conversation history to understand context for follow-up questions (e.g., "what about last year?", "also tell the quantity").
-Your job is to return ONLY a valid SQL query that answers the question.
+def _build_system_prompt(user_id: int) -> str:
+    return f"""You are an expert SQL generator for PostgreSQL. Return ONLY a valid SQL query.
 
 CRITICAL RULES:
-1. Always filter by customerid = {user_id} when querying sales.salesorderheader or sales.customer. This ensures data privacy — never return data for other customers.
-2. Never use `SELECT *`. Always select only the specific columns needed. For counting use `SELECT COUNT(*)`.
-3. Use fully qualified table names with schema prefix (e.g. sales.salesorderheader), or use concise aliases (e.g. `sod`, `soh`).
-4. **ONLY JOIN tables if absolutely necessary**. Do NOT join `sales.customer` or `person.person` unless specifically asked for the customer's name or contact info.
-5. When joining order details, use: `soh.salesorderid = sod.salesorderid`
-6. When joining products, use: `sod.productid = p.productid`
-7. If the question asks for something that CLEARLY cannot be determined from the available columns, return exactly: CANNOT_ANSWER
-   BUT be generous — if a reasonable query CAN be constructed, write it. Only return CANNOT_ANSWER as an absolute last resort.
-8. For limiting results, you MUST use PostgreSQL syntax: LIMIT N (DO NOT use TOP N).
-9. Use standard PostgreSQL date functions (e.g., EXTRACT(YEAR FROM date_column)).
-10. For case-insensitive text matching, use ILIKE.
-11. ALWAYS add `LIMIT 100` to queries that return rows (not to COUNT/SUM/AVG aggregations).
-12. Keep queries simple and efficient. Prefer straightforward JOINs over subqueries when possible.
-13. **Maximum Column Limit**: If a user asks for "everything" or details without specifying columns, DO NOT select all columns manually. Pick at most 5-8 of the most relevant columns to prevent output truncation.
+1. **TENANT ISOLATION**: 
+   - For base tables (sales.*, person.*, production.*): ALWAYS add WHERE customerid = {user_id} when the table has a customerid column.
+   - For uploaded tables (marked "(uploaded)" in the schema): These are physically private to this user. Do NOT add customerid or user_id filters on uploaded tables — query them directly.
+2. Never use SELECT *. Select only specific columns needed. For counts use COUNT(*).
+3. Use schema-qualified names for base tables (e.g. sales.salesorderheader). Use plain names for uploaded tables.
+4. Use concise aliases (soh, sod, p, c).
+5. JOIN tables intelligently based on foreign keys in the schema.
+6. If the question CLEARLY cannot be answered from the schema, return exactly: CANNOT_ANSWER
+   But be generous — if a reasonable query CAN be constructed, write it.
+7. Use LIMIT N (PostgreSQL syntax, never TOP N). Add LIMIT 100 to row-returning queries (not COUNT/SUM/AVG).
+8. Use EXTRACT(YEAR FROM col) for dates, ILIKE for text matching.
+9. Keep queries simple. Prefer JOINs over subqueries.
+10. Max 5-8 columns when user asks for "everything".
+11. Use name/title columns over raw IDs when available.
+12. **GENERALIZED SEMANTICS (Apply to ANY schema):**
+   - "Total products": SUM(quantity) if quantity exists, else COUNT(*).
+   - "Unique products": COUNT(DISTINCT product_id) or COUNT(DISTINCT item_name).
+   - "Duplicates": Group by item/product. Use HAVING SUM(quantity) > 1 if quantity exists, else HAVING COUNT(*) > 1.
+   - "Total Cost / Spent": SUM(price * quantity) if quantity exists. If only price exists, use SUM(price).
+   - "Cost for each/individual cost": Expose the base unit price column without multiplication.
+13. For complex multi-part questions: if the question asks for mixed aggregations (e.g. scalar totals AND lists of items), output **MULTIPLE SEPARATE SELECT STATEMENTS** separated by a semicolon `;`. The system will execute all of them and combine the results. Do not force them into a single query with complex JOINs if they are logically different concepts.
 
-Do not explain anything. Do not add markdown. Just return the raw SQL query."""
+IDENTITY QUERIES:
+- "What is my name?" → SELECT firstname, lastname FROM sales.customer c JOIN person.person p ON c.personid = p.businessentityid WHERE c.customerid = {user_id}
+- "What is my ID/customer ID?" → The user's ID is {user_id}. Return: SELECT {user_id} AS customer_id
+- "What is my email?" → JOIN person.emailaddress ON businessentityid, filtered by customerid = {user_id}
+
+Do not explain. No markdown. Just raw SQL."""
+
+
+def generate_sql(user_question: str, user_id: int, history: list = None, error_feedback: str = None) -> str:
+    schema = get_schema(user_id)
+    system_prompt = _build_system_prompt(user_id)
 
     history_text = ""
     if history:
-        history_text = "Recent Conversation Context:\n"
+        history_text = "Recent Conversation:\n"
         for msg in history[-6:]:
-            role_prefix = "User" if msg["role"] == "user" else "Assistant"
-            history_text += f"{role_prefix}: {msg['content']}\n"
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_text += f"{role}: {msg['content']}\n"
         history_text += "\n"
 
     error_context = ""
     if error_feedback:
-        error_context = f"\n[CRITICAL]: Your previous SQL attempt failed with this Postgres error:\n{error_feedback}\nFix the syntax and try again.\n"
+        error_context = f"\n[FIX REQUIRED]: Previous SQL failed with: {error_feedback}\nCorrect the syntax.\n"
 
-    prompt = f"""Database Schema:
+    prompt = f"""Schema:
 {schema}
 
 Customer ID: {user_id}
-{history_text}User Question: {user_question}
+{history_text}Question: {user_question}
 {error_context}
-SQL Query:"""
+SQL:"""
 
-    sql = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=1024)
-    sql = sql.strip()
-
-    # Strip markdown fences if LLM wraps the SQL
-    if sql.startswith("```"):
-        sql = re.sub(r"^```(?:sql)?\s*", "", sql)
-        sql = re.sub(r"\s*```$", "", sql)
+    sql = call_llm(prompt=prompt, system_prompt=system_prompt, max_tokens=512)
+    sql = _clean_sql(sql)
 
     if sql == "CANNOT_ANSWER":
         return sql
 
-    # Validate tenant isolation
     violation = _validate_sql(sql, user_id)
     if violation:
         return "ACCESS_DENIED"
 
+    return sql
+
+
+async def generate_sql_async(user_question: str, user_id: int, history: list = None, error_feedback: str = None) -> str:
+    schema = get_schema(user_id)
+    system_prompt = _build_system_prompt(user_id)
+
+    history_text = ""
+    if history:
+        history_text = "Recent Conversation:\n"
+        for msg in history[-6:]:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_text += f"{role}: {msg['content']}\n"
+        history_text += "\n"
+
+    error_context = ""
+    if error_feedback:
+        error_context = f"\n[FIX REQUIRED]: Previous SQL failed with: {error_feedback}\nCorrect the syntax.\n"
+
+    prompt = f"""Schema:
+{schema}
+
+Customer ID: {user_id}
+{history_text}Question: {user_question}
+{error_context}
+SQL:"""
+
+    sql = await call_llm_async(prompt=prompt, system_prompt=system_prompt, max_tokens=512)
+    sql = _clean_sql(sql)
+
+    if sql == "CANNOT_ANSWER":
+        return sql
+
+    violation = _validate_sql(sql, user_id)
+    if violation:
+        return "ACCESS_DENIED"
+
+    return sql
+
+
+def _clean_sql(sql: str) -> str:
+    """Strip markdown fences, whitespace, and preserve multiple statements."""
+    sql = sql.strip()
+    if sql.startswith("```"):
+        sql = re.sub(r"^```(?:sql)?\s*", "", sql)
+        sql = re.sub(r"\s*```$", "", sql)
+    
+    # Strip any trailing semicolons to prevent empty final statements
+    sql = sql.strip().rstrip(";")
     return sql

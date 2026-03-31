@@ -36,6 +36,7 @@ interface AppStore {
   activeSessionId: string | null;
   isLoading: boolean;
   sidebarOpen: boolean;
+  isDesktopSidebarOpen: boolean;
   authUser: User | null;
   theme: "dark" | "light";
   setCurrentUser: (user: AppUser) => void;
@@ -47,6 +48,7 @@ interface AppStore {
   addMessage: (sessionId: string, message: Message) => void;
   setLoading: (loading: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
+  toggleDesktopSidebar: () => void;
 }
 
 const genId = () => crypto.randomUUID();
@@ -59,6 +61,7 @@ export const useChatStore = create<AppStore>()(
       activeSessionId: null,
       isLoading: false,
       sidebarOpen: false,
+      isDesktopSidebarOpen: true,
       authUser: null,
       theme: "dark",
       setCurrentUser: (user) => set({ currentUser: user }),
@@ -129,6 +132,7 @@ export const useChatStore = create<AppStore>()(
       },
       setLoading: (loading) => set({ isLoading: loading }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      toggleDesktopSidebar: () => set((state) => ({ isDesktopSidebarOpen: !state.isDesktopSidebarOpen })),
     }),
     {
       name: "querymind_sessions",
@@ -136,6 +140,7 @@ export const useChatStore = create<AppStore>()(
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
         theme: state.theme,
+        isDesktopSidebarOpen: state.isDesktopSidebarOpen,
       }),
     },
   ),

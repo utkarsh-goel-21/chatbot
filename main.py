@@ -3,15 +3,16 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import threading
+import asyncio
 import time
 import requests
-from router.query_router import route_query
-from text_to_sql.sql_generator import generate_sql
+from router.query_router import route_query_async
+from text_to_sql.sql_generator import generate_sql_async
 from text_to_sql.sql_executor import execute_sql
 from text_to_sql.db_setup import get_engine
 from sqlalchemy import text
-from rag.answer_generator import generate_rag_answer
-from utils.groq_client import call_llm
+from rag.answer_generator import generate_rag_answer_async
+from utils.groq_client import call_llm_async, warm_up_llm, MODEL_FAST, MODEL_SMART
 from text_to_sql.db_setup import setup_database
 from rag.generate_insights import generate_insight_documents
 from rag.embedder import embed_documents
@@ -22,6 +23,12 @@ DEMO_CUSTOMERS = [11091, 11176]
 def seed():
     setup_database()
     engine = get_engine()
+
+    # Warm up the connection pool
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("✅ DB connection pool warmed up.")
+
     for cid in DEMO_CUSTOMERS:
         with engine.connect() as conn:
             count = conn.execute(text(
@@ -33,16 +40,34 @@ def seed():
         print(f"Generating insights for customer {cid}...")
         docs = generate_insight_documents(cid)
         embed_documents(docs)
+
+    # Pre-cache schema
     print("Warming up schema cache...")
     get_schema()
     print("Schema cache ready.")
 
+    # Warm up embedding model
+    _warm_up_embeddings()
+
+    # Warm up LLM connection
+    warm_up_llm()
+    print("🚀 All systems warmed up and ready!")
+
+
+def _warm_up_embeddings():
+    """Force the embedding model to load by running a dummy embed."""
+    try:
+        from rag.retriever import get_embedding
+        get_embedding("warmup")
+        print("✅ Embedding model warmed up.")
+    except Exception as e:
+        print(f"⚠️  Embedding warm-up failed (non-critical): {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Runs on startup
     threading.Thread(target=seed, daemon=True).start()
     yield
-    # Runs on shutdown (nothing to clean up for now)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -58,6 +83,66 @@ class ChatRequest(BaseModel):
     question: str
     user_id: int = 11091
     history: list = []
+
+
+# ── Answer formatting prompt ──
+ANSWER_FORMAT_SYSTEM = """You are a helpful business assistant.
+Convert raw database results into a clean, concise natural language answer.
+Do not mention SQL, databases, or queries.
+
+RULES:
+1. Only answer based on the data provided. Never invent information.
+2. If the result is [] or empty:
+   - For time-based questions (this week, today, this month): say "The available data covers 2011-2014, so there are no records for that time period. Try asking about a different date range."
+   - Otherwise: "I don't have any records matching that request."
+3. When listing items, use names (not IDs). Format lists cleanly.
+4. PRESERVE exact counts, totals, and business logic. If an item appears 8 times, say "8 times". Do not round money.
+5. Accurately map the raw data to the user's question. If the data gives a total product count and a separate duplicate count, DO NOT mix them up or hallucinate one from the other.
+6. For duplicate analysis: list each duplicate item with its exact count.
+7. Be concise — 1-3 sentences for simple answers, short paragraphs for complex ones."""
+
+
+async def _run_text_to_sql(question: str, user_id: int, history: list) -> tuple[str, bool]:
+    """Run the TEXT_TO_SQL pipeline asynchronously. Returns (answer, success)."""
+    error_feedback = None
+    max_retries = 2
+
+    for attempt in range(max_retries):
+        try:
+            sql = await generate_sql_async(question, user_id, history, error_feedback)
+            if sql.strip() == "CANNOT_ANSWER":
+                return ("I don't have enough data to answer that question. The available data doesn't include the information needed.", True)
+            elif sql.strip() == "ACCESS_DENIED":
+                return ("I'm sorry, but I can only show you your own data. I can't access information belonging to other customers.", True)
+            else:
+                # Split the generated SQL by semicolons to handle multi-part jagged requests
+                sql_statements = [s.strip() for s in sql.split(";") if s.strip()]
+                all_raw_results = []
+                
+                # Execute each statement
+                for stmt in sql_statements:
+                    try:
+                        raw_result = await asyncio.to_thread(execute_sql, stmt)
+                        all_raw_results.append(raw_result)
+                    except Exception as parse_e:
+                        print(f"Sub-statement failed: {parse_e} for SQL {stmt}")
+                
+                prompt = f"""User Question: {question}
+Raw Database Results (from multiple queries): {all_raw_results}
+Answer:"""
+                answer = await call_llm_async(prompt=prompt, system_prompt=ANSWER_FORMAT_SYSTEM, history=history, max_tokens=512)
+                return (answer, True)
+        except Exception as e:
+            print(f"TEXT_TO_SQL error on attempt {attempt+1}: {e}")
+            error_feedback = str(e)
+
+    return ("I couldn't process that query after multiple attempts. Try asking something more specific like 'How many orders do I have?' or 'What products have I purchased?'", False)
+
+
+async def _run_rag(question: str, user_id: int, history: list) -> str:
+    """Run the RAG pipeline asynchronously."""
+    return await generate_rag_answer_async(question, user_id, history)
+
 
 @app.get("/")
 def root():
@@ -110,59 +195,53 @@ async def upload_file(
         return {"status": "error", "message": f"Failed to process file: {str(e)}"}
 
 @app.post("/chat")
-def chat(request: ChatRequest):
+async def chat(request: ChatRequest):
     question = request.question
-    route = route_query(question, request.history)
+    user_id = request.user_id
+    history = request.history
+
+    # Step 1: Route the query (async)
+    route = await route_query_async(question, history)
 
     if route == "TEXT_TO_SQL":
-        error_feedback = None
-        max_retries = 2
-        success = False
-        
-        for attempt in range(max_retries):
-            try:
-                sql = generate_sql(question, request.user_id, request.history, error_feedback)
-                if sql.strip() == "CANNOT_ANSWER":
-                    answer = "I don't have enough data to answer that question. The available data doesn't include the information needed to determine this."
-                    success = True
-                    break
-                elif sql.strip() == "ACCESS_DENIED":
-                    answer = "I'm sorry, but I can only show you your own data. I can't access information belonging to other customers."
-                    success = True
-                    break
-                else:
-                    raw_result = execute_sql(sql)
-                    system_prompt = """You are a helpful business assistant.
-You will be given a user question and raw database results.
-Convert the raw results into a clean, concise natural language answer.
-Do not mention SQL or databases in your response.
-IMPORTANT: Only answer based on the data provided. Do not make assumptions.
-CRITICAL: If the Raw Database Result is exactly `[]` or empty, you MUST reply: "I do not have any records matching your specific request." Do NOT extrapolate and say the user has "no purchase data" overall."""
-                    prompt = f"""User Question: {question}
-Raw Database Result: {raw_result}
-Answer:"""
-                    answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history, max_tokens=512)
-                    success = True
-                    break
-            except Exception as e:
-                print(f"TEXT_TO_SQL syntax/execution error on attempt {attempt+1}: {e}")
-                error_feedback = str(e)
-                
-        if not success:
-            answer = "I couldn't process that query after multiple attempts. Try asking something more specific like 'How many orders do I have?' or 'What products have I purchased?'"
+        answer, _ = await _run_text_to_sql(question, user_id, history)
 
     elif route == "RAG":
-        answer = generate_rag_answer(question, request.user_id, request.history)
+        answer = await _run_rag(question, user_id, history)
+
+    elif route == "HYBRID":
+        # Run BOTH pipelines in PARALLEL for speed
+        sql_task = _run_text_to_sql(question, user_id, history)
+        rag_task = _run_rag(question, user_id, history)
+
+        (sql_result, rag_answer) = await asyncio.gather(sql_task, rag_task)
+        sql_answer, sql_ok = sql_result
+
+        # Combine both answers
+        combine_system = """You are a helpful business assistant.
+Combine these two partial answers into ONE coherent response.
+Lead with concrete data, then add insights. Be concise and professional.
+Do not mention combining sources."""
+
+        combine_prompt = f"""User Question: {question}
+
+Data Answer: {sql_answer}
+
+Insight Answer: {rag_answer}
+
+Combined Response:"""
+
+        answer = await call_llm_async(prompt=combine_prompt, system_prompt=combine_system, max_tokens=512)
 
     elif route == "BLOCKED":
-        system_prompt = """You are BizBot, a friendly and professional AI assistant for a business data platform.
-The user just sent a conversational, generic, or off-topic message (e.g. "hello", "why", "who are you").
-Respond politely and naturally, but keep your response very brief (1-2 sentences).
-If they said hello, greet them. If they asked what you can do, explain you can parse their CSV sales data and PDF documents. 
-If they asked a completely random or nonsense question, gently say you're an AI built specifically for business analytics and guide them back on track."""
-        
-        prompt = f"User Message: {question}\n\nYour Response:"
-        answer = call_llm(prompt=prompt, system_prompt=system_prompt, history=request.history, max_tokens=150)
+        system_prompt = """You are BizBot, a friendly AI assistant for a business data platform.
+The user sent a conversational or off-topic message.
+Respond politely and briefly (1-2 sentences).
+If greeting: greet them back. If asking what you do: explain you analyze their sales data and documents.
+If off-topic: say you're built for business analytics and guide them back."""
+
+        prompt = f"User: {question}\nResponse:"
+        answer = await call_llm_async(prompt=prompt, system_prompt=system_prompt, history=history, max_tokens=150, model=MODEL_FAST)
 
     else:
         answer = "I was unable to understand your question. Please try again."
@@ -174,18 +253,16 @@ def get_data_sources(user_id: int):
     try:
         engine = get_engine()
         with engine.connect() as conn:
-            # Get uploaded CSV tables
             tables_res = conn.execute(text(
                 "SELECT original_filename, table_name, created_at FROM uploaded_tables WHERE customer_id = :user_id ORDER BY created_at DESC"
             ), {"user_id": user_id}).fetchall()
-            
+
             csv_list = [{"filename": r[0], "table_name": r[1], "type": "csv", "created_at": r[2].isoformat() if r[2] else None} for r in tables_res]
 
-            # Get documents
             docs_res = conn.execute(text(
                 "SELECT id FROM rag_documents WHERE user_id = :user_id"
             ), {"user_id": user_id}).fetchall()
-            
+
             doc_names = set()
             for (doc_id,) in docs_res:
                 parts = doc_id.split(f"customer_{user_id}_")
@@ -194,9 +271,9 @@ def get_data_sources(user_id: int):
                     idx = rest.rfind("_chunk_")
                     if idx != -1:
                         doc_names.add(rest[:idx])
-            
+
             doc_list = [{"filename": name, "type": "pdf/txt"} for name in doc_names]
-            
+
             return {"status": "success", "data": {"csvs": csv_list, "documents": doc_list}}
     except Exception as e:
         print(f"Error fetching data sources: {e}")

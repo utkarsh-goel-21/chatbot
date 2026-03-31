@@ -6,7 +6,7 @@ import Sidebar from "@/components/chat/Sidebar";
 import ChatArea from "@/components/chat/ChatArea";
 
 const Index = () => {
-  const { sidebarOpen, setSidebarOpen, theme, setAuthUser } = useChatStore();
+  const { sidebarOpen, setSidebarOpen, isDesktopSidebarOpen, theme, setAuthUser } = useChatStore();
 
   useEffect(() => {
     document.documentElement.className = theme;
@@ -31,9 +31,21 @@ const Index = () => {
   return (
     <div className="flex h-screen w-full overflow-hidden">
       {/* Desktop sidebar */}
-      <div className="hidden md:block w-[260px] flex-shrink-0">
-        <Sidebar />
-      </div>
+      <AnimatePresence initial={false}>
+        {isDesktopSidebarOpen && (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: 260 }}
+            exit={{ width: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="hidden md:block flex-shrink-0 overflow-hidden"
+          >
+            <div className="w-[260px] h-full">
+              <Sidebar />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile sidebar drawer */}
       <AnimatePresence>

@@ -1,12 +1,24 @@
 import os
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import QueuePool
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_engine = None
+
 def get_engine():
-    return create_engine(os.getenv("DATABASE_URL"), poolclass=NullPool)
+    global _engine
+    if _engine is None:
+        _engine = create_engine(
+            os.getenv("DATABASE_URL"),
+            poolclass=QueuePool,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,       # auto-reconnect stale connections
+            pool_recycle=300,          # recycle connections every 5 min
+        )
+    return _engine
 
 def setup_database():
     """Verify AdventureWorks is reachable and ensure supporting tables exist."""

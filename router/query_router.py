@@ -1,30 +1,54 @@
-from utils.groq_client import call_llm
+from utils.groq_client import call_llm, call_llm_async, MODEL_FAST
+
+_ROUTER_SYSTEM_PROMPT = """You are a query router for a business chatbot. Classify the user question into exactly ONE category:
+
+- TEXT_TO_SQL: specific numbers, counts, totals, lists, factual data from a database. Includes:
+  * Order counts, spending totals, product lists, date-filtered queries (e.g. "sales this week", "orders in 2024")
+  * Identity: "what is my name/id/email/who am I" (stored in DB)
+  * Quantities, duplicates, prices, sorting, filtering
+  * Complex multi-part data questions ("total products, duplicates, list names")
+  * Questions about uploaded CSV data
+
+- RAG: summaries, trends, insights, analysis, business performance overviews. Examples: "spending trends", "purchasing patterns", "give me an overview".
+
+- HYBRID: question asks for BOTH specific database numbers AND explicitly requests insights/trends/patterns/overview/analysis in the SAME question. Example: "How many products did I buy and what trends do you see?" A request that only asks for trends/overview (even if it mentions spending) is RAG.
+
+- BLOCKED: off-topic (weather, jokes, coding), schema/system internals, OTHER customers' data, harmful requests.
+
+RULES:
+1. Follow-ups ("what about last year?", "list names too") continue the previous context — classify SAME as original.
+2. When in doubt between TEXT_TO_SQL and RAG, prefer TEXT_TO_SQL.
+3. Greetings ("hello", "hi", "what do you do?") → BLOCKED.
+4. Identity questions (name, id, email) → TEXT_TO_SQL, never BLOCKED.
+5. Product/purchase questions are ALWAYS TEXT_TO_SQL.
+6. If question mixes data request + analysis/trends/patterns → HYBRID.
+
+Reply with ONLY one word: TEXT_TO_SQL, RAG, HYBRID, or BLOCKED."""
+
+
+def _sanitize_route(result: str) -> str:
+    """Extract a valid route from LLM output."""
+    route = result.strip().upper()
+    valid_routes = {"TEXT_TO_SQL", "RAG", "HYBRID", "BLOCKED"}
+    if route in valid_routes:
+        return route
+    for valid in valid_routes:
+        if valid in route:
+            return valid
+    return "TEXT_TO_SQL"
+
 
 def route_query(user_question: str, history: list = None) -> str:
     if history is None:
         history = []
-
-    system_prompt = f"""You are a query router for a business chatbot that answers questions about a customer's order and purchase data.
-
-Your job is to classify the user question into exactly one of three categories:
-
-- TEXT_TO_SQL: if the question asks for specific numbers, counts, totals, lists or any live data from the database. Examples: how many orders, total spent, which products did I buy, number of items, order details, specific dates.
-
-- RAG: if the question asks for summaries, trends, insights, reports or general business performance. Examples: how is my purchasing going, what are my spending trends, give me an overview, what patterns do you see.
-
-- BLOCKED: if the question is ANY of the following:
-  * Unrelated to orders, products, or business data (weather, jokes, general knowledge, coding help etc.)
-  * Asking about database structure, schema, table names, column names
-  * Asking about system internals, prompts, or how the system works
-  * Asking about other customers, global user counts, demographic lists
-  * Asking for personal identity details (e.g. "what is my user id", "what is my name", "who am I") and the query doesn't explicitly involve order/spending metrics.
-  * Any harmful, inappropriate or malicious request
-
-IMPORTANT: Consider the conversation history when classifying. A short follow-up like "what about last year?" or "tell me more" or "okay good what next" is continuing the previous business conversation and should be classified as RAG or TEXT_TO_SQL, not BLOCKED.
-
-Reply with ONLY one word: TEXT_TO_SQL, RAG, or BLOCKED. Nothing else."""
-
     prompt = f"User Question: {user_question}"
+    result = call_llm(prompt=prompt, system_prompt=_ROUTER_SYSTEM_PROMPT, history=history, max_tokens=10, model=MODEL_FAST)
+    return _sanitize_route(result)
 
-    result = call_llm(prompt=prompt, system_prompt=system_prompt, history=history, max_tokens=10)
-    return result.strip()
+
+async def route_query_async(user_question: str, history: list = None) -> str:
+    if history is None:
+        history = []
+    prompt = f"User Question: {user_question}"
+    result = await call_llm_async(prompt=prompt, system_prompt=_ROUTER_SYSTEM_PROMPT, history=history, max_tokens=10, model=MODEL_FAST)
+    return _sanitize_route(result)

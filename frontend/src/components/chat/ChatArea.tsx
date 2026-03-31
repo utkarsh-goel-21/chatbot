@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from "react";
-import { Menu } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { sendChatMessage, uploadFile } from "@/lib/api";
 import MessageBubble from "./MessageBubble";
@@ -26,6 +26,8 @@ const ChatArea = () => {
     addMessage,
     setLoading,
     setSidebarOpen,
+    isDesktopSidebarOpen,
+    toggleDesktopSidebar,
     currentUser,
     authUser,
   } = useChatStore();
@@ -142,6 +144,13 @@ const ChatArea = () => {
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-6 max-sm:px-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleDesktopSidebar}
+            className="hidden md:flex text-qm-text-sec hover:text-qm-text transition-colors items-center justify-center"
+            title={isDesktopSidebarOpen ? "Close sidebar" : "Open sidebar"}
+          >
+            {isDesktopSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+          </button>
           <button
             onClick={() => setSidebarOpen(true)}
             className="md:hidden text-qm-text-sec hover:text-qm-text transition-colors max-sm:ml-1"

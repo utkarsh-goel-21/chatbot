@@ -12,36 +12,22 @@ def reset_schema_cache():
     _schema_cache = None
 
 
-def _should_skip_distinct(col_name: str) -> bool:
-    """Skip sampling distinct values for high-cardinality columns."""
-    name_lower = col_name.lower()
-    # Primary/foreign keys
-    if name_lower.endswith("id"):
-        return True
-    # Known high-cardinality patterns
-    skip_keywords = {
-        "rowguid", "modifieddate", "date", "guid",
-        "linetotal", "subtotal", "totaldue", "freight", "taxamt",
-    }
-    for keyword in skip_keywords:
-        if keyword in name_lower:
-            return True
-    return False
-
-
 def _build_base_schema() -> str:
-    """Build schema string for all AdventureWorks tables (cached globally)."""
+    """Build schema string for core AdventureWorks tables (cached globally)."""
     engine = get_engine()
     inspector = inspect(engine)
     schema_parts = []
 
-    # AdventureWorks schemas relevant to customer queries
     aw_schemas = ["sales", "person", "production"]
 
-    # Tables to skip entirely
-    excluded_tables = {"rag_documents", "uploaded_tables"}
+    # Core tables we actually want the LLM to know about (saves tokens)
+    core_tables = {
+        "customer", "salesorderheader", "salesorderdetail", "salesperson", "salesterritory", "store",
+        "person", "businessentity", "emailaddress",
+        "product", "productcategory", "productsubcategory", "productmodel"
+    }
 
-    with engine.connect() as conn:
+    try:
         for schema_name in aw_schemas:
             try:
                 tables = inspector.get_table_names(schema=schema_name)
@@ -49,7 +35,7 @@ def _build_base_schema() -> str:
                 continue
 
             for table_name in tables:
-                if table_name in excluded_tables:
+                if table_name not in core_tables:
                     continue
 
                 full_table = f"{schema_name}.{table_name}"
@@ -63,27 +49,13 @@ def _build_base_schema() -> str:
                 for col in columns:
                     col_name = col["name"]
                     col_type = str(col["type"])
-
-                    if _should_skip_distinct(col_name):
-                        col_definitions.append(f"{col_name} ({col_type})")
-                    else:
-                        try:
-                            rows = conn.execute(text(
-                                f"SELECT DISTINCT \"{col_name}\" FROM {full_table} LIMIT 15"
-                            )).fetchall()
-                            values = [str(r[0]) for r in rows if r[0] is not None]
-                            if values:
-                                col_definitions.append(
-                                    f"{col_name} ({col_type}, examples: {', '.join(values)})"
-                                )
-                            else:
-                                col_definitions.append(f"{col_name} ({col_type})")
-                        except Exception:
-                            col_definitions.append(f"{col_name} ({col_type})")
+                    col_definitions.append(f"{col_name} ({col_type})")
 
                 schema_parts.append(
                     f"Table: {full_table} | Columns: {', '.join(col_definitions)}"
                 )
+    except Exception as e:
+        print(f"Error building schema: {e}")
 
     return "\n".join(schema_parts)
 
