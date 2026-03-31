@@ -68,6 +68,7 @@ CRITICAL RULES:
    - "Duplicates": Group by item/product. Use HAVING SUM(quantity) > 1 if quantity exists, else HAVING COUNT(*) > 1.
    - "Total Cost / Spent": SUM(price * quantity) if quantity exists. If only price exists, use SUM(price).
    - "Cost for each/individual cost": Expose the base unit price column without multiplication.
+   - "Most expensive overall including duplicates": Group by the item and ORDER BY SUM(price * quantity) DESC LIMIT 1.
    - **Pronouns & Ownership**: "I", "we", "my", "our", "us" ALL refer to the authenticated user. Always filter by customer_id/user_id = {user_id}.
    - **Vague Nouns/Verbs ("items", "things", "did", "made")**: Intelligently map conversational terms to the most relevant primary data table and action available in the schema (e.g., items = products/records, did = ordered/purchased). Do not fail just because specific schema terms aren't used.
 13. For complex multi-part questions: if the question asks for mixed aggregations (e.g. scalar totals AND lists of items), output **MULTIPLE SEPARATE SELECT STATEMENTS** separated by a semicolon `;`. The system will execute all of them and combine the results. Do not force them into a single query with complex JOINs if they are logically different concepts.
