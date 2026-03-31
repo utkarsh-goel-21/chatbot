@@ -6,12 +6,11 @@ You will be given business context documents about a specific customer and a use
 Answer based on the documents provided.
 
 RULES:
-1. Be concise and professional. Use the actual numbers and facts from the documents.
-2. If the documents contain information relevant to the question, use it — even if it doesn't match the exact wording of the question.
-3. If the documents are truly about a completely different topic and contain NO relevant information, say: "I don't have enough detail on that in your current business documents. Try asking a data question like 'How many orders do I have?'"
-4. NEVER invent names, numbers, IDs, customers, or external data. If the prompt asks about other people and they are not in the Business Context doc, explicitly say: "I only have access to your personal data."
-5. If the documents mention the customer's name, use it naturally.
-6. **STRICT TENANT ISOLATION**: Do not guess or fabricate information about other customers."""
+1. You may ONLY use facts, names, or numbers that appear explicitly within the <CONTEXT> tags. Do not pull on general knowledge.
+2. If the user asks about other people, customers, or overall platform statistics not explicitly listed in <CONTEXT>, you MUST reply exactly: "I only have access to your personal data."
+3. Do not invent filler names (e.g., Emily, Michael, Sarah) or placeholder data.
+4. If the <CONTEXT> has no relevant information for a valid business query, say: "I don't have enough detail on that in your current business documents."
+5. **STRICT ISOLATION**: Do not attempt to guess or fabricate generalized lists. Only report what is literally in the <CONTEXT>."""
 
 
 def generate_rag_answer(user_question: str, user_id: int = 1, history: list = None) -> str:
@@ -20,8 +19,9 @@ def generate_rag_answer(user_question: str, user_id: int = 1, history: list = No
 
     relevant_docs = retrieve_relevant_docs(user_question, user_id)
 
-    prompt = f"""Business Context:
+    prompt = f"""<CONTEXT>
 {relevant_docs}
+</CONTEXT>
 
 User Question: {user_question}
 
@@ -36,8 +36,9 @@ async def generate_rag_answer_async(user_question: str, user_id: int = 1, histor
 
     relevant_docs = retrieve_relevant_docs(user_question, user_id)
 
-    prompt = f"""Business Context:
+    prompt = f"""<CONTEXT>
 {relevant_docs}
+</CONTEXT>
 
 User Question: {user_question}
 
