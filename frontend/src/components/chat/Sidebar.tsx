@@ -14,6 +14,8 @@ import { useChatStore, USERS, type Session } from "@/store/chatStore";
 import DiamondIcon from "./DiamondIcon";
 import { supabase } from "@/lib/supabase";
 import AuthModal from "@/components/auth/AuthModal";
+import SettingsModal from "@/components/chat/SettingsModal";
+import { Settings } from "lucide-react";
 
 function uuidToInt53(uuid: string): number {
   let hash = 0;
@@ -69,6 +71,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const handleNew = () => {
     createSession();
@@ -188,14 +191,23 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
               </p>
             </div>
             <button
+              onClick={() => setShowSettingsModal(true)}
+              className="flex-shrink-0 p-1 text-qm-text-muted hover:text-qm-text transition-colors flex items-center justify-center rounded-md hover:bg-qm-surface"
+              title="Settings"
+            >
+              <Settings size={16} />
+            </button>
+            <button
               onClick={toggleTheme}
-              className="text-qm-text-muted hover:text-qm-text transition-colors"
+              className="flex-shrink-0 p-1 text-qm-text-muted hover:text-qm-text transition-colors flex items-center justify-center rounded-md hover:bg-qm-surface"
+              title="Toggle Theme"
             >
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               onClick={() => setConfirmSignOut(true)}
-              className="text-qm-text-muted hover:text-red-400 transition-colors text-[11px]"
+              className="flex-shrink-0 px-2 py-1 text-qm-text-muted hover:text-red-400 transition-colors text-[11px] font-medium rounded-md hover:bg-red-400/10"
+              title="Sign out"
             >
               Sign out
             </button>
@@ -232,7 +244,7 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
               <div className="w-7 h-7 rounded-full bg-qm-elevated flex items-center justify-center text-xs font-bold text-qm-accent">
                 {currentUser.name[0]}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm text-qm-text font-medium flex items-center gap-2">
                   <span className="truncate">Welcome, {currentUser.name.split(" ")[0]}!</span>
                 </p>
@@ -260,12 +272,22 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
                 Switch
               </button>
 
-              <button
-                onClick={toggleTheme}
-                className="text-qm-text-muted hover:text-qm-text transition-colors ml-1"
-              >
-                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-1 text-qm-text-muted hover:text-qm-text transition-colors flex items-center justify-center rounded-md hover:bg-qm-surface"
+                  title="Settings"
+                >
+                  <Settings size={16} />
+                </button>
+                <button
+                  onClick={toggleTheme}
+                  className="p-1 text-qm-text-muted hover:text-qm-text transition-colors flex items-center justify-center rounded-md hover:bg-qm-surface"
+                  title="Toggle Theme"
+                >
+                  {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -309,6 +331,11 @@ const Sidebar = ({ onClose }: { onClose?: () => void }) => {
           defaultMode={authMode}
           onClose={() => setShowAuthModal(false)}
         />
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <SettingsModal onClose={() => setShowSettingsModal(false)} />
       )}
     </div>
   );

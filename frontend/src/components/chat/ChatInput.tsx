@@ -148,7 +148,7 @@ const ChatInput = ({
               ref={ref}
               rows={1}
               placeholder="Ask anything about your data..."
-              className="flex-1 bg-transparent border-none outline-none text-qm-text text-[15px] leading-[1.6] placeholder:text-qm-text-muted resize-none min-h-[24px] max-h-[200px] scrollbar-thin"
+              className="flex-1 bg-transparent border-none outline-none text-qm-text text-[15px] leading-[1.6] py-[5px] placeholder:text-qm-text-muted resize-none min-h-[34px] max-h-[200px] scrollbar-thin"
               onKeyDown={handleKeyDown}
               onInput={handleInput}
               onClick={() => {
