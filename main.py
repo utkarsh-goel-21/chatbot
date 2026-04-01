@@ -65,8 +65,8 @@ def seed():
     get_schema()
     print("Schema cache ready.")
 
-    # Warm up embedding model
-    _warm_up_embeddings()
+    # Warm up embedding model (Disabled to save RAM on Render Free Tier)
+    # _warm_up_embeddings()
 
     # Warm up LLM connection
     warm_up_llm()

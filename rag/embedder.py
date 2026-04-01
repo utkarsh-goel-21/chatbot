@@ -7,10 +7,13 @@ load_dotenv()
 # ── Vector store detection ──
 VECTOR_STORE = os.getenv("VECTOR_STORE", "pgvector").lower()  # "pgvector" or "chromadb"
 
-# Load the local embedding model into memory exactly once per process
-_embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# Load the local embedding model lazily to save memory on Render startup
+_embedding_model = None
 
 def get_embedding(text: str) -> list[float]:
+    global _embedding_model
+    if _embedding_model is None:
+        _embedding_model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
     # fastembed returns an iterator of numpy arrays
     vecs = list(_embedding_model.embed([text]))
     return vecs[0].tolist()

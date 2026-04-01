@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.db
 chroma_db/
+*.log
 
 # Frontend
 frontend/node_modules/
@@ -14,6 +15,7 @@ frontend/.env.local
 data/
 fix_csv.py
 CONTEXT.md
+chat.md
 
 venv/
 .venv/
