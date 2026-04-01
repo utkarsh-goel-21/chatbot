@@ -131,8 +131,14 @@ chatbot/
 
 - Python 3.10+
 - Node.js 18+
+
+**For cloud mode (default):**
 - A [Supabase](https://supabase.com) project with AdventureWorks loaded (PostgreSQL + pgvector extension enabled)
 - At least one [Groq API key](https://console.groq.com) (free)
+
+**For local mode (no cloud dependencies):**
+- [Ollama](https://ollama.com) installed locally
+- PostgreSQL installed locally
 
 ---
 
@@ -226,6 +232,116 @@ Frontend runs at `http://localhost:5173`. The backend must also be running.
 
 ---
 
+## Running Locally (Ollama + Local PostgreSQL)
+
+BizBot can run **entirely locally** with zero cloud dependencies — no API keys, no Supabase, no internet needed. This uses [Ollama](https://ollama.com) for the LLM, a local PostgreSQL database, and ChromaDB for vector storage.
+
+### Step 1: Install Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# Or download from https://ollama.com/download
+```
+
+### Step 2: Pull a model
+
+```bash
+ollama pull llama3.2:3b
+```
+
+This downloads a ~2GB model. Other models that work (all under 2GB):
+
+| Model | Command | Size | Notes |
+|---|---|---|---|
+| **llama3.2:3b** ⭐ | `ollama pull llama3.2:3b` | 2.0 GB | Best overall for this project |
+| llama3.2:1b | `ollama pull llama3.2:1b` | 1.3 GB | Lighter but weaker |
+| qwen2.5:1.5b | `ollama pull qwen2.5:1.5b` | 986 MB | Good multilingual support |
+| deepseek-r1:1.5b | `ollama pull deepseek-r1:1.5b` | 1.1 GB | Reasoning-focused |
+| gemma3:1b | `ollama pull gemma3:1b` | 815 MB | Google's smallest model |
+| qwen2.5:0.5b | `ollama pull qwen2.5:0.5b` | 397 MB | Ultra-light |
+
+### Step 3: Start Ollama
+
+```bash
+ollama serve
+```
+
+This starts the local LLM server at `http://localhost:11434`. Keep this running.
+
+### Step 4: Set up local PostgreSQL + AdventureWorks
+
+```bash
+# Install PostgreSQL (macOS)
+brew install postgresql@16
+brew services start postgresql@16
+
+# Create the database
+createdb adventureworks
+
+# Load AdventureWorks data (using the community conversion project)
+git clone https://github.com/lorint/AdventureWorks-for-Postgres.git /tmp/aw
+cd /tmp/aw
+# Follow the repo's instructions to load the data into your local PG,
+# or load from a provided SQL dump:
+# psql adventureworks < sample_data/adventureworks.sql
+```
+
+> **Note:** The AdventureWorks dataset contains ~19,820 customers, ~31,465 orders, and ~504 products. Make sure the `sales`, `person`, and `production` schemas are loaded.
+
+### Step 5: Configure `.env` for local mode
+
+Create a `.env` file in `chatbot/` (or edit the existing one):
+
+```env
+# LLM — use Ollama instead of Groq
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=llama3.2:3b
+
+# Database — local PostgreSQL
+DATABASE_URL=postgresql://postgres:password@localhost:5432/adventureworks
+
+# Vector store — ChromaDB instead of pgvector
+VECTOR_STORE=chromadb
+```
+
+> **No API keys needed.** Ollama is completely free and runs on your own machine.
+
+### Step 6: Run the backend
+
+```bash
+uvicorn main:app --reload
+```
+
+On first startup, BizBot will:
+- Connect to your local PostgreSQL
+- Generate AI insight documents using Ollama (this may take a few minutes with a local model)
+- Store embeddings in a local `chroma_db/` folder
+
+### Step 7: Run the frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+> **Note for local mode:** Supabase Auth won't be available without Supabase keys. The frontend will run in Guest/Demo mode, letting you switch between the two demo users (Dalton Perez & Mason Roberts).
+
+### Performance Notes (Local vs Cloud)
+
+| Aspect | Cloud (Groq 70B) | Local (Ollama 3B) |
+|---|---|---|
+| SQL Generation | Excellent — handles complex multi-join queries | Good for simple queries, may struggle with complex joins |
+| Answer Quality | High — detailed, well-formatted | Decent — shorter, less nuanced |
+| Response Speed | ~1-3s (API latency) | Depends on hardware (~2-10s) |
+| RAG Insights | Rich, detailed paragraphs | Shorter but functional |
+| Cost | Free (Groq free tier) | Free (your hardware) |
+| Privacy | Data sent to Groq/Supabase | 100% offline, nothing leaves your machine |
+
+---
+
 ## Authentication & Users
 
 BizBot uses **Supabase Auth** with two modes:
@@ -312,12 +428,21 @@ BizBot enforces strict multi-tenant data isolation at multiple levels:
 
 ---
 
-## LLM & Rate Limit Strategy
+## LLM Strategy
 
+BizBot supports two LLM providers, configured via `LLM_PROVIDER` in `.env`:
+
+### Cloud Mode (Groq)
 - **Two model tiers:** `llama-3.3-70b-versatile` for SQL generation and answer formatting; `llama-3.1-8b-instant` for routing and simple tasks.
 - **Multi-key rotation:** Up to 5 Groq API keys are loaded and rotated in round-robin. On a 429 rate limit, the next key is tried automatically.
 - **Token caps:** Each LLM call has a strict `max_tokens` budget (router: 10, SQL: 256, answer: 512, RAG: 512).
 - **Fallback:** If all keys are exhausted, the system falls back to the fast 8b model rather than crashing.
+
+### Local Mode (Ollama)
+- **Single model:** `llama3.2:3b` (or any Ollama model) used for all tasks.
+- **No rate limits:** Runs on your own hardware.
+- **OpenAI-compatible API:** Uses the `openai` Python SDK pointed at `http://localhost:11434/v1`.
+- **Configurable model:** Set `OLLAMA_MODEL` in `.env` to swap models instantly.
 
 ---
 
@@ -351,8 +476,8 @@ BizBot ships with a dual-theme design system:
 
 ## Notes
 
-- The backend auto-seeds AI insight documents for demo users on first startup — this takes ~30 seconds on a cold start (Render free tier).
-- ChromaDB is **not** used — the project migrated to Supabase pgvector for vector storage.
-- SQLite is **not** used — all data is on Supabase PostgreSQL.
+- The backend auto-seeds AI insight documents for demo users on first startup — this takes ~30 seconds on cloud, a few minutes with local Ollama.
+- **Dual mode:** The project supports both cloud (Groq + Supabase + pgvector) and local (Ollama + local PG + ChromaDB) modes, controlled entirely by `.env` variables. See `.env.example` for a template.
+- Vector store is switchable: set `VECTOR_STORE=pgvector` for Supabase or `VECTOR_STORE=chromadb` for local file-based storage.
 - Supabase Auth UUIDs are hashed to stable 53-bit integers via `uuidToInt53` for backend compatibility.
-- A keep-alive thread pings the Render backend every 10 minutes to prevent cold starts.
+- A keep-alive thread pings the Render backend every 10 minutes to prevent cold starts (only relevant in cloud mode).

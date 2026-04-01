@@ -15,10 +15,33 @@ from rag.answer_generator import generate_rag_answer_async
 from utils.groq_client import call_llm_async, warm_up_llm, MODEL_FAST, MODEL_SMART
 from text_to_sql.db_setup import setup_database
 from rag.generate_insights import generate_insight_documents
-from rag.embedder import embed_documents
+from rag.embedder import embed_documents, VECTOR_STORE
 from text_to_sql.schema_loader import get_schema
+import os
 
 DEMO_CUSTOMERS = [11091, 11176]
+
+def _insights_exist(customer_id: int) -> bool:
+    """Check if insight documents already exist for a customer."""
+    if VECTOR_STORE == "chromadb":
+        try:
+            from rag.embedder import _get_chroma_collection
+            collection = _get_chroma_collection()
+            results = collection.get(
+                where={"user_id": customer_id},
+                limit=1,
+            )
+            return len(results.get("ids", [])) > 0
+        except Exception:
+            return False
+    else:
+        engine = get_engine()
+        with engine.connect() as conn:
+            count = conn.execute(text(
+                "SELECT COUNT(*) FROM rag_documents WHERE user_id = :cid"
+            ), {"cid": customer_id}).scalar()
+        return count > 0
+
 
 def seed():
     setup_database()
@@ -30,11 +53,7 @@ def seed():
     print("✅ DB connection pool warmed up.")
 
     for cid in DEMO_CUSTOMERS:
-        with engine.connect() as conn:
-            count = conn.execute(text(
-                "SELECT COUNT(*) FROM rag_documents WHERE user_id = :cid"
-            ), {"cid": cid}).scalar()
-        if count > 0:
+        if _insights_exist(cid):
             print(f"Insights already exist for customer {cid}. Skipping.")
             continue
         print(f"Generating insights for customer {cid}...")
