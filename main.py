@@ -280,18 +280,36 @@ def get_data_sources(user_id: int):
 
             csv_list = [{"filename": r[0], "table_name": r[1], "type": "csv", "created_at": r[2].isoformat() if r[2] else None} for r in tables_res]
 
-            docs_res = conn.execute(text(
-                "SELECT id FROM rag_documents WHERE user_id = :user_id"
-            ), {"user_id": user_id}).fetchall()
-
+            # Get uploaded document names — source depends on vector store
             doc_names = set()
-            for (doc_id,) in docs_res:
-                parts = doc_id.split(f"customer_{user_id}_")
-                if len(parts) > 1:
-                    rest = parts[1]
-                    idx = rest.rfind("_chunk_")
-                    if idx != -1:
-                        doc_names.add(rest[:idx])
+            if VECTOR_STORE == "chromadb":
+                try:
+                    from rag.embedder import _get_chroma_collection
+                    collection = _get_chroma_collection()
+                    results = collection.get(
+                        where={"user_id": user_id},
+                    )
+                    for doc_id in results.get("ids", []):
+                        parts = doc_id.split(f"customer_{user_id}_")
+                        if len(parts) > 1:
+                            rest = parts[1]
+                            idx = rest.rfind("_chunk_")
+                            if idx != -1:
+                                doc_names.add(rest[:idx])
+                except Exception:
+                    pass
+            else:
+                docs_res = conn.execute(text(
+                    "SELECT id FROM rag_documents WHERE user_id = :user_id"
+                ), {"user_id": user_id}).fetchall()
+
+                for (doc_id,) in docs_res:
+                    parts = doc_id.split(f"customer_{user_id}_")
+                    if len(parts) > 1:
+                        rest = parts[1]
+                        idx = rest.rfind("_chunk_")
+                        if idx != -1:
+                            doc_names.add(rest[:idx])
 
             doc_list = [{"filename": name, "type": "pdf/txt"} for name in doc_names]
 

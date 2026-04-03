@@ -7,6 +7,30 @@ load_dotenv()
 
 _schema_cache = None
 
+# Check provider once at module load
+_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+
+# Columns that waste tokens and confuse small models
+_NOISE_COLUMNS = {"rowguid", "modifieddate"}
+
+# Explicit relationship hints for small models (Ollama)
+_RELATIONSHIP_HINTS = """
+Relationships:
+- sales.customer.personid -> person.person.businessentityid (JOIN to get customer name)
+- sales.customer.customerid -> sales.salesorderheader.customerid (JOIN to get customer orders)
+- sales.salesorderheader.salesorderid -> sales.salesorderdetail.salesorderid (JOIN to get order line items)
+- sales.salesorderdetail.productid -> production.product.productid (JOIN to get product info)
+- production.product.productsubcategoryid -> production.productsubcategory.productsubcategoryid
+- production.productsubcategory.productcategoryid -> production.productcategory.productcategoryid
+- person.emailaddress.businessentityid -> person.person.businessentityid (JOIN to get email)
+
+IMPORTANT column locations:
+- orderdate, duedate, shipdate, subtotal, totaldue, freight, taxamt are on sales.salesorderheader (NOT on salesorderdetail)
+- orderqty, unitprice, unitpricediscount, productid are on sales.salesorderdetail (NOT on salesorderheader)
+- firstname, lastname are on person.person (NOT on sales.customer)
+- name (product name) is on production.product"""
+
+
 def reset_schema_cache():
     global _schema_cache
     _schema_cache = None
@@ -26,6 +50,9 @@ def _build_base_schema() -> str:
         "person", "businessentity", "emailaddress",
         "product", "productcategory", "productsubcategory", "productmodel"
     }
+
+    # Only filter noise columns for small local models
+    filter_noise = (_LLM_PROVIDER == "ollama")
 
     try:
         for schema_name in aw_schemas:
@@ -48,6 +75,9 @@ def _build_base_schema() -> str:
                 col_definitions = []
                 for col in columns:
                     col_name = col["name"]
+                    # Skip noise columns for Ollama to save tokens
+                    if filter_noise and col_name in _NOISE_COLUMNS:
+                        continue
                     col_type = str(col["type"])
                     col_definitions.append(f"{col_name} ({col_type})")
 
@@ -57,7 +87,13 @@ def _build_base_schema() -> str:
     except Exception as e:
         print(f"Error building schema: {e}")
 
-    return "\n".join(schema_parts)
+    base = "\n".join(schema_parts)
+
+    # Add relationship hints only for small local models
+    if filter_noise:
+        base += "\n" + _RELATIONSHIP_HINTS
+
+    return base
 
 
 def _get_uploaded_tables_schema(customer_id: int) -> str:

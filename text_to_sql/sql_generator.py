@@ -1,6 +1,28 @@
 import re
+import os
 from utils.groq_client import call_llm, call_llm_async
 from text_to_sql.schema_loader import get_schema
+
+_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+
+# Extra hints ONLY for small local models (Ollama) to prevent common mistakes.
+# These are NOT added when using Groq (production) — the 70B model doesn't need them.
+_OLLAMA_EXTRA_HINTS = """
+
+CRITICAL TABLE-COLUMN MAPPING (do NOT mix these up):
+- orderdate, shipdate, duedate, subtotal, totaldue, taxamt, freight, customerid → sales.salesorderheader
+- orderqty, unitprice, unitpricediscount, productid, carriertrackingnumber → sales.salesorderdetail  
+- salesorderid exists on BOTH tables (use it for JOINs)
+- firstname, lastname, persontype → person.person (NOT sales.customer)
+- name (product name), listprice, standardcost, color → production.product
+
+COMMON JOIN PATTERNS:
+- Customer orders: sales.customer c JOIN sales.salesorderheader soh ON c.customerid = soh.customerid
+- Order items: sales.salesorderheader soh JOIN sales.salesorderdetail sod ON soh.salesorderid = sod.salesorderid
+- Product info: sales.salesorderdetail sod JOIN production.product p ON sod.productid = p.productid
+- Customer name: sales.customer c JOIN person.person p ON c.personid = p.businessentityid
+- Product category: production.product p JOIN production.productsubcategory ps ON p.productsubcategoryid = ps.productsubcategoryid JOIN production.productcategory pc ON ps.productcategoryid = pc.productcategoryid
+"""
 
 
 def _validate_sql(sql: str, customer_id: int) -> str | None:
@@ -51,7 +73,7 @@ def _validate_sql(sql: str, customer_id: int) -> str | None:
 
 
 def _build_system_prompt(user_id: int) -> str:
-    return f"""You are an expert SQL generator for PostgreSQL. Return ONLY a valid SQL query.
+    base_prompt = f"""You are an expert SQL generator for PostgreSQL. Return ONLY a valid SQL query.
 
 CRITICAL RULES:
 1. **TENANT ISOLATION**: 
@@ -84,6 +106,12 @@ IDENTITY QUERIES:
 - "What is my email?" → JOIN person.emailaddress ON businessentityid, filtered by customerid = {user_id}
 
 Do not explain. No markdown. Just raw SQL."""
+
+    # Add extra hints ONLY for small local models
+    if _LLM_PROVIDER == "ollama":
+        base_prompt += _OLLAMA_EXTRA_HINTS
+
+    return base_prompt
 
 
 def generate_sql(user_question: str, user_id: int, history: list = None, error_feedback: str = None) -> str:
