@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizBot — Complete Documentation & Local Setup Guide</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #1a1a2e;
+            line-height: 1.7;
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            background: #ffffff;
+            text-align: justify;
+        }
+
+        /* Page header */
+        .doc-header {
+            text-align: center;
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .doc-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .doc-header .subtitle { font-size: 15px; color: #4a4a6a; }
+        .doc-header .repo-link {
+            display: inline-block; margin-top: 12px; font-size: 14px;
+            color: #2563eb; text-decoration: none; font-family: 'JetBrains Mono', monospace;
+        }
+        .doc-header .repo-link:hover { text-decoration: underline; }
+
+        h2 {
+            font-size: 20px; font-weight: 700; margin: 48px 0 16px;
+            padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;
+        }
+        h3 { font-size: 16px; font-weight: 600; margin: 28px 0 12px; }
+        h4 { font-size: 14px; font-weight: 600; color: #4a4a6a; margin: 20px 0 8px; }
+
+        p { margin: 10px 0; font-size: 14.5px; }
+        ul, ol { margin: 8px 0 8px 24px; font-size: 14.5px; }
+        li { margin: 4px 0; }
+        li::marker { color: #4a4a6a; }
+
+        code {
+            font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #c7254e;
+        }
+
+        pre {
+            background: #0f172a; color: #e2e8f0; padding: 16px 20px;
+            border-radius: 8px; overflow-x: auto; margin: 12px 0;
+            font-size: 13px; line-height: 1.6;
+        }
+        pre code { background: none; color: inherit; padding: 0; font-size: 13px; }
+        .cmd-label {
+            display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px;
+            font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        table {
+            width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;
+        }
+        th {
+            background: #f8fafc; font-weight: 600; text-align: left;
+            padding: 10px 14px; border: 1px solid #e2e8f0; font-size: 13px;
+        }
+        td { padding: 10px 14px; border: 1px solid #e2e8f0; vertical-align: top; }
+        tr:nth-child(even) { background: #fafbfc; }
+
+        /* Callout boxes — NO colored tints, just subtle border */
+        .callout {
+            padding: 14px 18px; border-radius: 8px; margin: 16px 0;
+            font-size: 14px; border: 1px solid #e2e8f0; background: #ffffff;
+        }
+        .callout-title {
+            font-weight: 600; margin-bottom: 4px; display: block;
+        }
+        .callout-title.red { color: #dc2626; }
+        .callout-title.orange { color: #d97706; }
+        .callout-title.blue { color: #2563eb; }
+        .callout-title.green { color: #16a34a; }
+
+        .flow-diagram {
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 20px; margin: 16px 0; font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px; line-height: 1.8; overflow-x: auto; white-space: pre;
+        }
+
+        /* Step numbering */
+        .step { counter-increment: step; position: relative; padding-left: 40px; margin: 24px 0; }
+        .step::before {
+            content: counter(step); position: absolute; left: 0; top: 0;
+            width: 28px; height: 28px; background: #2563eb; color: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600;
+        }
+        .steps-container { counter-reset: step; }
+
+        .page-break { page-break-before: always; margin-top: 60px; }
+
+        /* ═══════════════ PRINT STYLES ═══════════════ */
+        @media print {
+            body {
+                padding: 20px 15px;
+                max-width: none;
+                font-size: 12px;
+                line-height: 1.5;
+            }
+
+            /* Prevent elements from breaking across pages */
+            h2, h3, h4 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            table, pre, .callout, .step, .proj-card, .flow-diagram {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            img {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                max-height: 400px;
+                width: auto;
+                max-width: 100%;
+            }
+
+            /* Keep headings with their content */
+            h2 + *, h3 + *, h4 + * {
+                page-break-before: avoid;
+                break-before: avoid;
+            }
+
+            /* Code blocks: use light background for print */
+            pre {
+                background: #f1f5f9 !important;
+                color: #1a1a2e !important;
+                border: 1px solid #d1d5db;
+                font-size: 11px;
+                padding: 10px 14px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+                overflow-x: visible !important;
+            }
+            pre code {
+                color: #1a1a2e !important;
+            }
+            .cmd-label {
+                color: #64748b !important;
+            }
+
+            /* Flow diagram: ensure it prints properly */
+            .flow-diagram {
+                font-size: 10px;
+                line-height: 1.5;
+                padding: 12px;
+                background: #f8fafc !important;
+                border: 1px solid #d1d5db;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Collapse grid to single column for print */
+            .proj-grid {
+                display: block;
+            }
+            .proj-card {
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* Step circles */
+            .step::before {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Badges */
+            .badge {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Tables: shrink font slightly */
+            table { font-size: 12px; }
+            th, td { padding: 6px 10px; }
+            th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* ER images: constrain size */
+            .er-image {
+                max-height: 380px;
+                width: auto;
+                max-width: 100%;
+                page-break-before: auto;
+            }
+
+            /* Reduce spacing */
+            h2 { margin-top: 32px; }
+            .doc-header { margin-bottom: 30px; padding-bottom: 20px; }
+
+            /* Hide decorative elements that don't print well */
+            .doc-header .repo-link { color: #2563eb; }
+            a { color: #2563eb; text-decoration: underline; }
+            a[href^="http"]::after {
+                content: " (" attr(href) ")";
+                font-size: 10px;
+                color: #64748b;
+            }
+            .doc-header a[href]::after { content: none; }
+
+            /* Page margins */
+            @page {
+                margin: 1.5cm 1.5cm;
+            }
+        }
+
+        hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
+
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .badge-cloud { background: #dbeafe; color: #1d4ed8; }
+        .badge-local { background: #dcfce7; color: #16a34a; }
+
+        /* ER diagram image */
+        .er-image {
+            width: 100%; border-radius: 8px; margin: 16px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Project structure - improved card layout */
+        .proj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+        .proj-card {
+            border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;
+            background: #fafbfc;
+        }
+        .proj-card h4 {
+            margin: 0 0 10px 0; font-size: 14px; font-weight: 600;
+            color: #1a1a2e; display: flex; align-items: center; gap: 6px;
+        }
+        .proj-card h4 .emoji { font-size: 16px; }
+        .proj-card ul { list-style: none; margin: 0; padding: 0; }
+        .proj-card li {
+            font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+            padding: 3px 0; display: flex; justify-content: space-between; gap: 8px;
+        }
+        .proj-card li .desc { color: #64748b; font-family: 'Inter', sans-serif; font-size: 12px; text-align: right; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+
+<div class="doc-header">
+    <h1>BizBot Complete Documentation</h1>
+    <div class="subtitle">An AI-Powered Business Chatbot with Natural Language to SQL</div>
+    <a href="https://github.com/utkarsh-goel-21/chatbot" class="repo-link">github.com/utkarsh-goel-21/chatbot</a>
+</div>
+
+<!-- ═══════════════ 1. PROJECT OVERVIEW ═══════════════ -->
+
+<h2>1. What Is This Project</h2>
+
+<p>A chatbot that lets non-technical users query their own business data using plain English. No SQL knowledge needed — the user types a question and gets a direct answer in seconds.</p>
+
+<p>The system handles three types of questions through four routing pipelines:</p>
+<ul>
+    <li><strong>TEXT_TO_SQL</strong> — Questions about live data (e.g. "How many orders did I place?") answered by generating and running a SQL query against the database.</li>
+    <li><strong>RAG</strong> — Questions about trends and insights (e.g. "What are the sales trends?") answered by searching pre-generated insight documents using Retrieval-Augmented Generation.</li>
+    <li><strong>HYBRID</strong> — Questions that ask for both specific data AND analysis (e.g. "How many products did I buy and what trends do you see?") runs both TEXT_TO_SQL and RAG <strong>in parallel</strong>, then combines the results into one coherent answer.</li>
+    <li><strong>BLOCKED</strong> — Off-topic or conversational messages gets a polite redirect with no database or LLM pipeline run.</li>
+</ul>
+
+<p>The system runs on the AdventureWorks dataset (a real-world bicycle sales database with 121,000+ order records) and supports two deployment modes:</p>
+
+<table>
+    <tr><th>Mode</th><th>LLM</th><th>Database</th><th>Vector Store</th><th>Use Case</th></tr>
+    <tr>
+        <td><span class="badge badge-cloud">Cloud</span></td>
+        <td>Groq API (LLaMA 3.3 70B)</td>
+        <td>Supabase (hosted PostgreSQL)</td>
+        <td>pgvector</td>
+        <td>Production on Render + Vercel</td>
+    </tr>
+    <tr>
+        <td><span class="badge badge-local">Local</span></td>
+        <td>Ollama (LLaMA 3.2 3B)</td>
+        <td>Local PostgreSQL</td>
+        <td>ChromaDB (file-based)</td>
+        <td>Offline development, zero API costs</td>
+    </tr>
+</table>
+
+<p>All four routing pipelines (TEXT_TO_SQL, RAG, HYBRID, BLOCKED) work identically in both cloud and local modes. The only difference is the underlying LLM and vector store. The routing logic, SQL generation, RAG retrieval, and HYBRID combination are the same codebase.</p>
+
+<!-- ═══════════════ 2. SYSTEM ARCHITECTURE ═══════════════ -->
+
+<h2>2. System Architecture</h2>
+
+<p>Three physical layers, one logical layer:</p>
+
+<table>
+    <tr><th>Layer</th><th>What It Does</th></tr>
+    <tr>
+        <td><strong>Frontend (Vercel / localhost)</strong></td>
+        <td>React + TypeScript chat interface. Manages session state with Zustand (persisted in localStorage). Sends every message with user ID and last 6 conversation turns to the backend.</td>
+    </tr>
+    <tr>
+        <td><strong>Backend (Render / localhost)</strong></td>
+        <td>FastAPI Python app. Two endpoints: <code>/chat</code> for questions, <code>/upload</code> for file ingestion. All AI logic lives here. Uses either Groq API or local Ollama for LLM.</td>
+    </tr>
+    <tr>
+        <td><strong>Database (Supabase / Local PG)</strong></td>
+        <td>PostgreSQL database containing both relational business data and (in cloud mode) vector embeddings. In local mode, ChromaDB handles vector storage separately.</td>
+    </tr>
+    <tr>
+        <td><strong>AI Routing (logical)</strong></td>
+        <td>Lives inside the backend. Classifies each question into <code>TEXT_TO_SQL</code>, <code>RAG</code>, <code>HYBRID</code>, or <code>BLOCKED</code> before any pipeline runs.</td>
+    </tr>
+</table>
+
+<h3>Execution Flow</h3>
+
+<div class="flow-diagram">
+User sends message
+       │
+       ▼
+┌─────────────────┐
+│  Query Router   │ ── Classifies into TEXT_TO_SQL / RAG / HYBRID / BLOCKED
+│  (LLM call #1)  │    using question + conversation history
+└───────┬─────────┘
+        │
+   ┌────┴────┬──────────────┬──────────────┐
+   │         │              │              │
+   ▼         ▼              ▼              ▼
+BLOCKED    RAG          TEXT_TO_SQL      HYBRID
+   │         │              │              │
+   │    ┌────┴────┐    ┌────┴────┐    ┌────┴────────────────┐
+   │    │ Embed   │    │ Schema  │    │ Runs BOTH pipelines │
+   │    │ Question│    │ Loader  │    │ in PARALLEL:        │
+   │    └────┬────┘    └────┬────┘    │ • TEXT_TO_SQL path  │
+   │         │              │         │ • RAG path          │
+   │    ┌────┴────┐    ┌────┴────┐    └────┬────────────────┘
+   │    │ Vector  │    │  SQL    │         │
+   │    │ Search  │    │Generator│    ┌────┴────┐
+   │    └────┬────┘    │(LLM #2)│    │Combine  │ ── LLM merges data +
+   │         │         └────┬────┘    │Results  │    insights into one
+   │    Top 2 docs          │         │(LLM #4) │    coherent answer
+   │         │         ┌────┴────┐    └────┬────┘
+   │         │         │  SQL    │         │
+   │         │         │Executor │         │
+   │         │         └────┬────┘         │
+   │         ▼              ▼              ▼
+   │    ┌────────────────────────┐         │
+   │    │   Answer Formatter     │         │
+   │    │      (LLM call #3)     │         │
+   │    └────────────┬───────────┘         │
+   │                 │                     │
+   ▼                 ▼                     ▼
+Fixed           Formatted             Combined
+message          answer            data + insights
+   │                 │                     │
+   └────────┬────────┴─────────────────────┘
+            ▼
+     Sent to frontend</div>
+
+<p>Key things to note about the flow:</p>
+<ul>
+    <li>The router always runs first, it sees the full conversation history so follow-up questions like "and on weekends?" are correctly understood in context.</li>
+    <li>BLOCKED returns a fixed response immediately no LLM or database call happens.</li>
+    <li>HYBRID runs TEXT_TO_SQL and RAG <strong>simultaneously</strong> using Python's <code>asyncio.gather()</code>, then makes one final LLM call to merge both answers into a single coherent response.</li>
+    <li>The schema fed to the SQL generator includes the actual column names and types from the database. In local mode, extra hints about table-column mappings and JOIN patterns are appended to help the smaller model.</li>
+    <li>RAG documents are pre-generated at server startup by running aggregation queries over the user's data and asking the LLM to write insight summaries. They are not generated per request.</li>
+</ul>
+
+<!-- ═══════════════ 3. DATABASE SCHEMA ═══════════════ -->
+
+<div class="page-break"></div>
+
+<h2>3. Database Schema(AdventureWorks)</h2>
+
+<p>AdventureWorks is a Microsoft sample database modeled after a fictional bicycle manufacturing company called "Adventure Works Cycles". The data includes customers, orders, products, and employee information.</p>
+
+<h3>3.1 Schemas Overview</h3>
+
+<p>The database uses PostgreSQL schemas to organize tables into logical groups:</p>
+
+<table>
+    <tr><th>Schema</th><th>Purpose</th><th>Tables Used by BizBot</th></tr>
+    <tr><td><code>sales</code></td><td>Customer orders, transactions, sales territories</td><td><code>customer</code>, <code>salesorderheader</code>, <code>salesorderdetail</code></td></tr>
+    <tr><td><code>person</code></td><td>Personal info — names, emails, addresses</td><td><code>person</code>, <code>businessentity</code>, <code>emailaddress</code></td></tr>
+    <tr><td><code>production</code></td><td>Products, categories, manufacturing</td><td><code>product</code>, <code>productcategory</code>, <code>productsubcategory</code>, <code>productmodel</code></td></tr>
+</table>
+
+<p>AdventureWorks has 40+ tables across these schemas, but BizBot only exposes the 10 core tables listed above to the LLM. This saves context tokens and prevents the model from getting confused by irrelevant tables like work orders or bill of materials. The other tables still exist in the database, if you want the LLM to query more tables, just add their names to the <code>core_tables</code> set in <code>schema_loader.py</code>.</p>
+
+<h3>3.2 Key Relationships (how tables connect)</h3>
+
+<img src="image.png" alt="Entity Relationship Overview" class="er-image">
+
+<img src="er_diagram.png" alt="Entity Relationship Diagram — Detailed" class="er-image">
+
+<h3>3.3 Table Details and Row Counts</h3>
+
+<table>
+    <tr><th>Table</th><th>What It Stores</th><th>Key Columns</th><th>Rows</th></tr>
+    <tr><td><code>sales.customer</code></td><td>Each customer record</td><td>customerid, personid, storeid, territoryid</td><td>19,820</td></tr>
+    <tr><td><code>sales.salesorderheader</code></td><td>One row per order — dates, totals</td><td>salesorderid, orderdate, customerid, subtotal, totaldue</td><td>31,465</td></tr>
+    <tr><td><code>sales.salesorderdetail</code></td><td>One row per line item in an order</td><td>salesorderid, productid, orderqty, unitprice</td><td>121,317</td></tr>
+    <tr><td><code>person.person</code></td><td>Names and personal info</td><td>businessentityid, firstname, lastname, persontype</td><td>39,944</td></tr>
+    <tr><td><code>person.emailaddress</code></td><td>Email addresses</td><td>businessentityid, emailaddress</td><td>39,944</td></tr>
+    <tr><td><code>person.businessentity</code></td><td>Base entity linking person to customer</td><td>businessentityid</td><td>41,554</td></tr>
+    <tr><td><code>production.product</code></td><td>All products sold</td><td>productid, name, listprice, color, standardcost</td><td>504</td></tr>
+    <tr><td><code>production.productcategory</code></td><td>Top-level categories</td><td>productcategoryid, name</td><td>4</td></tr>
+    <tr><td><code>production.productsubcategory</code></td><td>Sub-categories (Mountain Bikes, etc.)</td><td>productsubcategoryid, productcategoryid, name</td><td>37</td></tr>
+    <tr><td><code>production.productmodel</code></td><td>Product model metadata</td><td>productmodelid, name</td><td>128</td></tr>
+</table>
+
+<h3>3.4 Common Query Paths</h3>
+
+<table>
+    <tr><th>User Question</th><th>Tables Joined</th></tr>
+    <tr><td>"What is my name?"</td><td><code>sales.customer</code> → <code>person.person</code> (via personid = businessentityid)</td></tr>
+    <tr><td>"How many orders do I have?"</td><td><code>sales.salesorderheader</code> (filtered by customerid)</td></tr>
+    <tr><td>"What products have I bought?"</td><td><code>salesorderheader</code> → <code>salesorderdetail</code> → <code>production.product</code></td></tr>
+    <tr><td>"Top 5 products by revenue?"</td><td><code>salesorderdetail</code> → <code>product</code> (grouped, ordered by SUM)</td></tr>
+    <tr><td>"What is my email?"</td><td><code>customer</code> → <code>person.emailaddress</code> (via personid = businessentityid)</td></tr>
+</table>
+
+<!-- ═══════════════ 4. KEY COMPONENTS ═══════════════ -->
+
+<div class="page-break"></div>
+
+<h2>4. Key Components</h2>
+
+<h3>Backend</h3>
+<ul>
+    <li><strong>main.py</strong> — Entry point. Defines <code>/chat</code> and <code>/upload</code> endpoints. On first startup: verifies database, generates RAG documents, warms schema cache and LLM connection.</li>
+    <li><strong>query_router.py</strong> — Sends question + history to LLM, gets back <code>TEXT_TO_SQL</code> / <code>RAG</code> / <code>HYBRID</code> / <code>BLOCKED</code>.</li>
+    <li><strong>schema_loader.py</strong> — Fetches table names and column types from PostgreSQL. Cached in memory after first call. In Ollama mode, adds relationship hints and filters noise columns.</li>
+    <li><strong>sql_generator.py</strong> — Sends schema + question to LLM. Returns raw SQL with tenant isolation. In Ollama mode, appends extra column-mapping and JOIN-pattern hints.</li>
+    <li><strong>sql_executor.py</strong> — Runs the generated SQL on PostgreSQL via SQLAlchemy.</li>
+    <li><strong>generate_insights.py</strong> — Runs aggregation queries per user on startup. Sends results to LLM to write insight paragraphs for RAG.</li>
+    <li><strong>embedder.py</strong> — Creates 384-dim embeddings using fastembed. Stores in pgvector (cloud) or ChromaDB (local).</li>
+    <li><strong>retriever.py</strong> — Embeds the user's question, runs cosine similarity search, returns top 2 matching docs.</li>
+    <li><strong>groq_client.py</strong> — All LLM calls route through here. Supports Groq (with 5-key rotation) or Ollama (OpenAI-compatible API).</li>
+    <li><strong>file_processor.py</strong> — Handles CSV (creates new DB table), PDF/TXT (chunked and embedded as RAG documents).</li>
+</ul>
+
+<h3>Frontend</h3>
+<ul>
+    <li><strong>chatStore.ts</strong> — Zustand store. Holds session state, auth state, theme. Persists to localStorage.</li>
+    <li><strong>api.ts</strong> — <code>sendChatMessage</code> (POST to /chat) and <code>uploadFile</code> (multipart POST to /upload).</li>
+</ul>
+
+<h3>Project Structure</h3>
+
+<div class="proj-grid">
+    <div class="proj-card">
+        <h4><span class="emoji">⚙️</span> Root — App Entry & Config</h4>
+        <ul>
+            <li><span>main.py</span> <span class="desc">FastAPI app + endpoints</span></li>
+            <li><span>requirements.txt</span> <span class="desc">Python dependencies</span></li>
+            <li><span>.env.example</span> <span class="desc">Config template</span></li>
+            <li><span>aw_data_only.sql</span> <span class="desc">Data dump for local setup</span></li>
+        </ul>
+    </div>
+    <div class="proj-card">
+        <h4><span class="emoji">🗄️</span> text_to_sql/ — SQL Pipeline</h4>
+        <ul>
+            <li><span>db_setup.py</span> <span class="desc">Connection pool</span></li>
+            <li><span>schema_loader.py</span> <span class="desc">Schema for LLM</span></li>
+            <li><span>sql_generator.py</span> <span class="desc">LLM → SQL query</span></li>
+            <li><span>sql_executor.py</span> <span class="desc">Runs SQL on DB</span></li>
+        </ul>
+    </div>
+    <div class="proj-card">
+        <h4><span class="emoji">📚</span> rag/ — RAG Pipeline</h4>
+        <ul>
+            <li><span>generate_insights.py</span> <span class="desc">Auto-gen insight docs</span></li>
+            <li><span>embedder.py</span> <span class="desc">Text → vectors</span></li>
+            <li><span>retriever.py</span> <span class="desc">Similarity search</span></li>
+        </ul>
+    </div>
+    <div class="proj-card">
+        <h4><span class="emoji">🧠</span> router/ & utils/</h4>
+        <ul>
+            <li><span>query_router.py</span> <span class="desc">Intent classification</span></li>
+            <li><span>groq_client.py</span> <span class="desc">LLM client (Groq/Ollama)</span></li>
+            <li><span>file_processor.py</span> <span class="desc">CSV/PDF/TXT uploads</span></li>
+        </ul>
+    </div>
+</div>
+
+<div class="proj-card" style="margin: 0 0 16px 0;">
+    <h4><span class="emoji">🎨</span> frontend/ — React + TypeScript</h4>
+    <ul>
+        <li><span>src/</span> <span class="desc">React components, store, API</span></li>
+        <li><span>package.json</span> <span class="desc">Node.js dependencies</span></li>
+        <li><span>.env</span> <span class="desc">Frontend env variables</span></li>
+    </ul>
+</div>
+
+<!-- ═══════════════ 5. CLOUD vs LOCAL ═══════════════ -->
+
+<h2>5. Cloud Mode vs Local Mode</h2>
+
+<table>
+    <tr><th>Aspect</th><th><span class="badge badge-cloud">Cloud</span></th><th><span class="badge badge-local">Local</span></th></tr>
+    <tr><td>LLM</td><td>Groq API — LLaMA 3.3 70B (128k context)</td><td>Ollama — LLaMA 3.2 3B (runs on CPU/GPU locally)</td></tr>
+    <tr><td>Database</td><td>Supabase hosted PostgreSQL</td><td>Local PostgreSQL on your machine</td></tr>
+    <tr><td>Vector Store</td><td>pgvector (PostgreSQL extension)</td><td>ChromaDB (file-based, in <code>chroma_db/</code>)</td></tr>
+    <tr><td>Embeddings</td><td>fastembed (local, no API call)</td><td>Same — fastembed (local, no API call)</td></tr>
+    <tr><td>Routing Pipelines</td><td>TEXT_TO_SQL, RAG, HYBRID, BLOCKED</td><td>Same — all four pipelines work identically</td></tr>
+    <tr><td>Auth</td><td>Supabase Auth (Google OAuth)</td><td>Skipped (hardcoded customer IDs for testing)</td></tr>
+    <tr><td>Frontend</td><td>Deployed on Vercel</td><td><code>npm run dev</code> → localhost:5173</td></tr>
+    <tr><td>Backend</td><td>Deployed on Render</td><td><code>uvicorn</code> → localhost:8000</td></tr>
+    <tr><td>Cost</td><td>Free tier (Groq, Supabase, Render, Vercel)</td><td>Zero — fully offline</td></tr>
+    <tr><td>SQL Quality</td><td>High — 70B model rarely makes mistakes</td><td>Good — 3B model with prompt hints handles most queries</td></tr>
+</table>
+
+<p>Switching between modes requires editing only the <code>.env</code> file — no code changes needed.</p>
+
+<!-- ═══════════════ 6. SERVICES ═══════════════ -->
+
+<h2>6. External Services &amp; Key Dependencies</h2>
+
+<table>
+    <tr><th>Service / Library</th><th>Role</th></tr>
+    <tr><td>Groq (LLaMA 3.3 70B)</td><td>Query routing, SQL generation, insight writing, result formatting. Chosen for speed and free-tier 128k context window. <span class="badge badge-cloud">Cloud only</span></td></tr>
+    <tr><td>Ollama (LLaMA 3.2 3B)</td><td>Same role as Groq but runs locally via OpenAI-compatible API. Small enough for 4GB RAM machines. <span class="badge badge-local">Local only</span></td></tr>
+    <tr><td>fastembed (all-MiniLM-L6-v2)</td><td>Text embeddings (384 dims). Runs locally — no API call needed. ~91MB one-time download.</td></tr>
+    <tr><td>Supabase (PostgreSQL + pgvector)</td><td>Primary database + vector store for cloud mode. <span class="badge badge-cloud">Cloud only</span></td></tr>
+    <tr><td>ChromaDB</td><td>File-based vector store for local mode. Stores embeddings in <code>chroma_db/</code> folder. <span class="badge badge-local">Local only</span></td></tr>
+    <tr><td>FastAPI + SQLAlchemy</td><td>Backend framework and ORM. psycopg2-binary for PostgreSQL connections.</td></tr>
+    <tr><td>React 19 + TypeScript</td><td>Frontend framework. TypeScript enforces API response shape contracts.</td></tr>
+    <tr><td>Zustand</td><td>Frontend state management. Minimal API with built-in localStorage persistence.</td></tr>
+    <tr><td>Tailwind + shadcn/ui</td><td>Styling and component library.</td></tr>
+</table>
+
+<!-- ═══════════════ 7. WHY ═══════════════ -->
+
+<h2>7. Why It Works This Way</h2>
+
+<ul>
+    <li><strong>Three pipelines + HYBRID</strong> — SQL and RAG answer structurally different question types. HYBRID handles edge cases where users ask for both data and analysis in one question, running both pipelines in parallel for speed.</li>
+    <li><strong>Dual-mode architecture</strong> — The entire codebase uses runtime checks (<code>LLM_PROVIDER</code>, <code>VECTOR_STORE</code>) to switch between cloud and local. No separate branches — same codebase powers both.</li>
+    <li><strong>Prompt hints only for small models</strong> — The 3B Ollama model needs explicit column-to-table mappings and JOIN patterns. The 70B Groq model doesn't. Hints are conditionally appended only when <code>LLM_PROVIDER=ollama</code>, keeping the production prompt lean.</li>
+    <li><strong>ChromaDB instead of pgvector locally</strong> — pgvector requires a PostgreSQL extension that's complex to install on Windows. ChromaDB is pip-installable and file-based.</li>
+    <li><strong>Schema caching</strong> — Fetching schema per request adds a database round-trip. Caching eliminates this after the first request.</li>
+    <li><strong>Conversation history in routing</strong> — Without it, "what about on weekends?" would be misclassified. Passing the last 6 turns makes follow-ups work.</li>
+</ul>
+
+<!-- ═══════════════ 8. LOCAL SETUP ═══════════════ -->
+
+<div class="page-break"></div>
+
+<h2>8. Complete Local Setup Guide (Step-by-Step)</h2>
+
+<p>You need a Windows, macOS, or Linux machine with at least <strong>4 GB RAM</strong>. All tools used are free and open-source.</p>
+
+<div class="steps-container">
+
+<!-- STEP 1 -->
+<div class="step">
+<h3>Clone the Repository</h3>
+<pre><code>git clone https://github.com/utkarsh-goel-21/chatbot.git
+cd chatbot</code></pre>
+<p>This creates a <code>chatbot/</code> folder with the full project.</p>
+</div>
+
+<!-- STEP 2 -->
+<div class="step">
+<h3>Install PostgreSQL</h3>
+<p>Download and install PostgreSQL from <a href="https://www.postgresql.org/download/">postgresql.org/download</a>.</p>
+<ul>
+    <li><strong>Windows:</strong> Use the EDB installer. During setup, set the superuser password to <code>password</code> (or any password you'll remember). Keep the default port <code>5432</code>. Uncheck "Stack Builder" at the end.</li>
+    <li><strong>macOS:</strong> <code>brew install postgresql@16</code> then <code>brew services start postgresql@16</code></li>
+    <li><strong>Linux:</strong> <code>sudo apt install postgresql postgresql-contrib</code></li>
+</ul>
+
+<p>Verify it's running:</p>
+<pre><span class="cmd-label">PowerShell (Windows)</span><code>Get-Service postgresql*
+# Should show Status: Running</code></pre>
+
+<div class="callout">
+    <span class="callout-title red">Common Issue: "psql is not recognized"</span>
+    On Windows, psql is NOT in PATH by default. Use the full path: <code>"C:\Program Files\PostgreSQL\18\bin\psql.exe"</code> (adjust the version number to match your install — it might be <code>16</code> or <code>17</code>).
+</div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step">
+<h3>Create the Database and Load Data</h3>
+
+<p>First, create the <code>adventureworks</code> database:</p>
+<pre><span class="cmd-label">PowerShell (Windows)</span><code>$env:PGPASSWORD='password'
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE adventureworks;"</code></pre>
+
+<p>Then load the AdventureWorks data:</p>
+<pre><span class="cmd-label">PowerShell (Windows)</span><code>$env:PGPASSWORD='password'
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d adventureworks --no-psqlrc --pset pager=off --set ON_ERROR_STOP=off -f aw_data_only.sql</code></pre>
+
+<div class="callout">
+    <span class="callout-title orange">This takes 3–5 minutes</span>
+    The file is ~78MB with hundreds of thousands of INSERT statements. You'll see many lines scrolling by — this is normal. Some <code>ERROR</code> messages about duplicate keys or missing schemas are expected and safe to ignore.
+</div>
+
+<p>Verify the data loaded correctly:</p>
+<pre><span class="cmd-label">PowerShell (Windows)</span><code>$env:PGPASSWORD='password'
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d adventureworks -c "SELECT COUNT(*) FROM sales.customer;"</code></pre>
+<p>Expected result: <code>19820</code>. If you see this, the data is loaded correctly.</p>
+
+<div class="callout">
+    <span class="callout-title red">Common Issue: "FATAL: password authentication failed"</span>
+    If you set a different password during PostgreSQL installation, use that password instead of <code>password</code> everywhere. Also update it in the <code>.env</code> file (Step 5).
+</div>
+</div>
+
+<!-- STEP 4 -->
+<div class="step">
+<h3>Install Ollama and Pull the Model</h3>
+
+<div class="callout">
+    <span class="callout-title red">Important: Ollama version must be 0.18.3 or lower</span>
+    Ollama v0.19.0 has a confirmed bug that crashes <code>llama3.2:3b</code> with <code>llama runner process has terminated</code>. To avoid this, download <strong>v0.18.3</strong> directly:
+    <ol style="margin-top: 8px;">
+        <li>Go to <a href="https://github.com/ollama/ollama/releases/tag/v0.18.3">github.com/ollama/ollama/releases/tag/v0.18.3</a></li>
+        <li>Scroll down to <strong>Assets</strong> and download <code>OllamaSetup.exe</code> (Windows) or the appropriate installer for your OS</li>
+        <li>Run the installer — it installs and starts Ollama automatically</li>
+        <li>Verify the version: <code>ollama --version</code> → should say <code>0.18.3</code></li>
+    </ol>
+</div>
+
+<p>After installation, pull the LLaMA 3.2 model:</p>
+<pre><code>ollama pull llama3.2:3b</code></pre>
+<p>This downloads a ~2GB model file. It only happens once.</p>
+
+<p>Test that it works:</p>
+<pre><code>ollama run llama3.2:3b "say hi"</code></pre>
+<p>If it responds with text, you're good. If it sits for more than 30 seconds, you may need to free up RAM.</p>
+
+<div class="callout">
+    <span class="callout-title red">Common Issue: "model requires more system memory"</span>
+    The model needs ~1.7 GB free RAM. Close other apps (Chrome, VS Code, etc.) and retry. Check Task Manager → Processes to see what's consuming memory.
+</div>
+</div>
+
+<!-- STEP 5 -->
+<div class="step">
+<h3>Configure the Backend Environment</h3>
+
+<p>Copy the example config and set it to local mode:</p>
+<pre><span class="cmd-label">PowerShell</span><code>cd chatbot
+Copy-Item .env.example .env</code></pre>
+
+<p>Open <code>.env</code> in any text editor and replace its entire contents with:</p>
+<pre><code># BizBot Local Mode Configuration
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=llama3.2:3b
+
+DATABASE_URL=postgresql://postgres:password@localhost:5432/adventureworks
+
+VECTOR_STORE=chromadb</code></pre>
+
+<div class="callout">
+    <span class="callout-title orange">Replace <code>password</code> with YOUR PostgreSQL password</span>
+    If you set a different password during PostgreSQL installation, change it in the <code>DATABASE_URL</code> line.
+</div>
+</div>
+
+<!-- STEP 6 -->
+<div class="step">
+<h3>Set Up the Python Backend</h3>
+
+<p>Create a virtual environment and install dependencies:</p>
+<pre><span class="cmd-label">PowerShell (Windows)</span><code>cd chatbot
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt</code></pre>
+
+<pre><span class="cmd-label">macOS / Linux</span><code>cd chatbot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</code></pre>
+
+<div class="callout">
+    <span class="callout-title">First install takes 2–5 minutes</span>
+    This installs FastAPI, SQLAlchemy, ChromaDB, fastembed, and other dependencies. ChromaDB and fastembed are the largest packages.
+</div>
+
+<div class="callout">
+    <span class="callout-title red">Common Issue: "Microsoft Visual C++ 14.0 or greater is required"</span>
+    Some packages need C++ build tools on Windows. Install them from <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/">Visual Studio Build Tools</a> — select "Desktop development with C++" workload, then retry <code>pip install -r requirements.txt</code>.
+</div>
+</div>
+
+<!-- STEP 7 -->
+<div class="step">
+<h3>Set Up the Frontend</h3>
+
+<p>Install Node.js (v18+) from <a href="https://nodejs.org">nodejs.org</a> if you don't have it.</p>
+
+<pre><code>cd frontend
+npm install</code></pre>
+
+<p>Create a file called <code>.env</code> inside the <code>frontend/</code> folder with this content:</p>
+<pre><code>VITE_SUPABASE_URL=https://placeholder.supabase.co
+VITE_SUPABASE_ANON_KEY=placeholder_key</code></pre>
+
+<p>The frontend code imports Supabase for auth in cloud mode. In local mode, auth is skipped but the import still runs and expects these variables to exist. Placeholder values prevent the initialization error — they won't make any API calls.</p>
+</div>
+
+<!-- STEP 8 -->
+<div class="step">
+<h3>Start the Backend</h3>
+
+<p>Make sure Ollama is running (check system tray or run <code>ollama list</code>), then:</p>
+<pre><span class="cmd-label">Terminal 1</span><code>cd chatbot
+.\venv\Scripts\activate
+uvicorn main:app --reload --port 8000</code></pre>
+
+<p>Wait until you see:</p>
+<pre><code>🚀 All systems warmed up and ready!</code></pre>
+
+<div class="callout">
+    <span class="callout-title orange">First boot takes 1–3 minutes</span>
+    It generates AI insight documents for the sample users and downloads the embedding model (~91 MB, one-time). Subsequent boots are much faster. You'll see some <code>SAWarning: Did not recognize type 'xml'</code> messages — these are harmless and can be ignored.
+</div>
+
+<p><strong>Leave this terminal open.</strong></p>
+</div>
+
+<!-- STEP 9 -->
+<div class="step">
+<h3>Start the Frontend</h3>
+
+<pre><span class="cmd-label">Terminal 2</span><code>cd chatbot/frontend
+npm run dev</code></pre>
+
+<p>Wait until you see:</p>
+<pre><code>VITE v7.x.x  ready in XXX ms
+  ➜  Local:   http://localhost:5173/</code></pre>
+</div>
+
+<!-- STEP 10 -->
+<div class="step">
+<h3>Test It!</h3>
+
+<p>Open your browser and go to <code>http://localhost:5173</code></p>
+
+<p>Try these questions:</p>
+<ul>
+    <li><strong>"Hello"</strong> → Should respond with a greeting (BLOCKED pipeline)</li>
+    <li><strong>"What is my name?"</strong> → Should return the customer's name (TEXT_TO_SQL)</li>
+    <li><strong>"How many orders do I have?"</strong> → Should count orders (TEXT_TO_SQL)</li>
+    <li><strong>"What are the sales trends?"</strong> → Should discuss trends (RAG)</li>
+    <li><strong>"How many products did I buy and what trends do you see?"</strong> → Data + insights (HYBRID)</li>
+</ul>
+</div>
+
+</div> <!-- end steps-container -->
+
+<!-- ═══════════════ 9. TROUBLESHOOTING ═══════════════ -->
+
+<div class="page-break"></div>
+
+<h2>9. Troubleshooting Reference</h2>
+
+<table>
+    <tr><th>Problem</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><code>model requires more system memory</code></td><td>Not enough free RAM</td><td>Close all apps. Need ~1.7 GB free. Check Task Manager.</td></tr>
+    <tr><td><code>llama runner process has terminated</code></td><td>Ollama v0.19.0 bug</td><td>Downgrade to v0.18.3. See Step 4.</td></tr>
+    <tr><td><code>FATAL: password authentication failed</code></td><td>Wrong PostgreSQL password</td><td>Use the password you set during install. Update <code>.env</code>.</td></tr>
+    <tr><td><code>database "adventureworks" does not exist</code></td><td>Forgot to create the DB</td><td>Run: <code>psql -U postgres -c "CREATE DATABASE adventureworks;"</code></td></tr>
+    <tr><td><code>sales.customer has 0 rows</code></td><td>Data not loaded</td><td>Re-load: <code>psql -U postgres -d adventureworks -f aw_data_only.sql</code></td></tr>
+    <tr><td><code>supabaseUrl is required</code></td><td>Missing frontend <code>.env</code></td><td>Create <code>frontend/.env</code> with placeholder values. See Step 7.</td></tr>
+    <tr><td><code>vite is not recognized</code></td><td>Missing npm deps</td><td>Run <code>npm install</code> in the <code>frontend/</code> folder.</td></tr>
+    <tr><td><code>Sorry, I couldn't reach the server</code></td><td>Backend not running</td><td>Make sure Python backend (Step 8) is running on port 8000.</td></tr>
+    <tr><td><code>column "X" does not exist</code></td><td>LLM hallucinated a column</td><td>Try rephrasing your question.</td></tr>
+    <tr><td><code>SAWarning: Did not recognize type 'xml'</code></td><td>AdventureWorks XML columns</td><td>Non-critical warning. Safe to ignore.</td></tr>
+    <tr><td><code>Visual C++ 14.0 required</code></td><td>Missing C++ build tools</td><td>Install VS Build Tools with "C++ Desktop" workload.</td></tr>
+    <tr><td>Ollama taking 30+ seconds</td><td>Low RAM, model swapping</td><td>Close memory-hungry apps. Keep 2+ GB free.</td></tr>
+</table>
+
+<!-- ═══════════════ 10. SHUTDOWN ═══════════════ -->
+
+<h2>10. Shutting Down &amp; Restarting</h2>
+
+<h3>Shutting Down</h3>
+<ol>
+    <li><strong>Frontend:</strong> Press <code>Ctrl+C</code> in the frontend terminal</li>
+    <li><strong>Backend:</strong> Press <code>Ctrl+C</code> in the backend terminal</li>
+    <li><strong>Ollama:</strong> Right-click the system tray icon → Quit (or <code>taskkill /IM ollama.exe /F</code>)</li>
+    <li><strong>PostgreSQL:</strong> Runs as a service — no need to stop it (auto-starts on boot)</li>
+</ol>
+
+<h3>Restarting (After Reboot)</h3>
+<p>PostgreSQL and Ollama auto-start on boot. You just need to:</p>
+<ol>
+    <li>Open terminal → <code>cd chatbot</code> → <code>.\venv\Scripts\activate</code> → <code>uvicorn main:app --reload --port 8000</code></li>
+    <li>Open second terminal → <code>cd chatbot/frontend</code> → <code>npm run dev</code></li>
+    <li>Open browser → <code>http://localhost:5173</code></li>
+</ol>
+
+<hr>
+
+<p style="text-align: center; color: #4a4a6a; font-size: 13px; margin-top: 40px;">
+    BizBot Documentation — Built with FastAPI, React, PostgreSQL, and LLaMA<br>
+    <a href="https://github.com/utkarsh-goel-21/chatbot" style="color: #2563eb;">github.com/utkarsh-goel-21/chatbot</a>
+</p>
+
+</body>
+</html>
