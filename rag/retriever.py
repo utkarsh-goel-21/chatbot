@@ -1,5 +1,8 @@
 import os
 from dotenv import load_dotenv
+from sqlalchemy import text
+from text_to_sql.db_setup import get_engine
+from rag.embedder import get_embedding, _get_chroma_collection
 
 load_dotenv()
 
@@ -15,9 +18,6 @@ def retrieve_relevant_docs(user_question: str, user_id: int, n_results: int = 2)
 
 def _retrieve_pgvector(user_question: str, user_id: int, n_results: int) -> str:
     """Retrieve docs from Supabase pgvector using cosine similarity."""
-    from sqlalchemy import text
-    from text_to_sql.db_setup import get_engine
-    from rag.embedder import get_embedding
 
     engine = get_engine()
     question_embedding = get_embedding(user_question)
@@ -42,7 +42,6 @@ def _retrieve_pgvector(user_question: str, user_id: int, n_results: int) -> str:
 
 def _retrieve_chromadb(user_question: str, user_id: int, n_results: int) -> str:
     """Retrieve docs from local ChromaDB using cosine similarity."""
-    from rag.embedder import get_embedding, _get_chroma_collection
 
     collection = _get_chroma_collection()
     question_embedding = get_embedding(user_question)
