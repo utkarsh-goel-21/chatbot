@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 from fastembed import TextEmbedding
+from text_to_sql.db_setup import get_engine
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -52,9 +54,7 @@ def embed_documents(documents: list[dict]):
 
 def _embed_pgvector(documents: list[dict]):
     """Store embeddings in Supabase pgvector."""
-    from text_to_sql.db_setup import get_engine
-    from sqlalchemy import text
-
+    
     engine = get_engine()
 
     with engine.connect() as conn:
