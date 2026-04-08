@@ -17,6 +17,7 @@ fix_csv.py
 CONTEXT.md
 chat.md
 help.md
+error.md
 
 venv/
 .venv/
