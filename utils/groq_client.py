@@ -8,8 +8,9 @@ load_dotenv()
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()  # "groq" or "ollama"
 
 # ── Model constants ──
-MODEL_FAST = "llama-3.1-8b-instant"           # For simple tasks: routing, classification
-MODEL_SMART = "llama-3.3-70b-versatile"       # For complex tasks: SQL gen, answer formatting
+# Groq model IDs can change over time, so keep them env-configurable.
+MODEL_FAST = os.getenv("GROQ_MODEL_FAST", "openai/gpt-oss-20b")      # For simple tasks: routing, classification
+MODEL_SMART = os.getenv("GROQ_MODEL_SMART", "openai/gpt-oss-120b")   # For complex tasks: SQL gen, answer formatting
 
 
 # ═══════════════════════════════════════════════════════════
