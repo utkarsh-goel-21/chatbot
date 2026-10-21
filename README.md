@@ -60,7 +60,7 @@ Format        Answer         ▼
 | Layer | Technology |
 |---|---|
 | **Backend** | FastAPI, Uvicorn, SQLAlchemy, psycopg2-binary |
-| **LLM** | Groq API — `llama-3.3-70b-versatile` (smart), `llama-3.1-8b-instant` (fast) |
+| **LLM** | Groq API — `llama-3.1-8b-instant` (smart), `llama-3.1-8b-instant` (fast) |
 | **Embeddings** | `fastembed` — `all-MiniLM-L6-v2` (local, no API needed) |
 | **Vector Store** | Supabase pgvector (`rag_documents` table) |
 | **Database** | Supabase PostgreSQL (AdventureWorks dataset) |
@@ -433,7 +433,7 @@ BizBot enforces strict multi-tenant data isolation at multiple levels:
 BizBot supports two LLM providers, configured via `LLM_PROVIDER` in `.env`:
 
 ### Cloud Mode (Groq)
-- **Two model tiers:** `llama-3.3-70b-versatile` for SQL generation and answer formatting; `llama-3.1-8b-instant` for routing and simple tasks.
+- **Two model tiers:** `llama-3.1-8b-instant` for SQL generation and answer formatting; `llama-3.1-8b-instant` for routing and simple tasks.
 - **Multi-key rotation:** Up to 5 Groq API keys are loaded and rotated in round-robin. On a 429 rate limit, the next key is tried automatically.
 - **Token caps:** Each LLM call has a strict `max_tokens` budget (router: 10, SQL: 256, answer: 512, RAG: 512).
 - **Fallback:** If all keys are exhausted, the system falls back to the fast 8b model rather than crashing.

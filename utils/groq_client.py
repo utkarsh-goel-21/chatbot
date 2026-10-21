@@ -9,7 +9,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()  # "groq" or "ollama"
 
 # ── Model constants ──
 MODEL_FAST = "llama-3.1-8b-instant"           # For simple tasks: routing, classification
-MODEL_SMART = "llama-3.3-70b-versatile"       # For complex tasks: SQL gen, answer formatting
+MODEL_SMART = "llama-3.1-8b-instant"          # For complex tasks: SQL gen, answer formatting
 
 
 # ═══════════════════════════════════════════════════════════
